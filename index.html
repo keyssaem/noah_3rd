@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>AI 전학생 '노아'와 함께하는 공존·상생 프로젝트</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Jua&family=Gowun+Dodum&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+<div id="app">
+  <canvas id="game-canvas"></canvas>
+
+  <!-- ══════════ 1-2 메인 화면 ══════════ -->
+  <div id="menu-screen" class="screen">
+    <div class="menu-sky">
+      <div class="cloud c1">☁️</div><div class="cloud c2">☁️</div><div class="cloud c3">☁️</div>
+    </div>
+    <div class="menu-inner">
+      <p class="menu-sub">인공지능 로봇과 올바른 관계 맺기 시뮬레이터</p>
+      <h1 class="menu-title">AI 전학생 <span class="noah-name">'노아'</span>와<br>함께하는 공존·상생 프로젝트</h1>
+      <div class="menu-noah">🤖</div>
+      <div class="menu-buttons">
+        <button id="btn-start" class="big-btn">🎮 모험 시작하기</button>
+      </div>
+      <p class="menu-std">성취기준 [6도02-03] 인간과 인공지능 로봇 간의 도덕에 기반을 둔 관계 형성</p>
+    </div>
+  </div>
+
+  <!-- ══════════ 1-3 이름/성별 설정 (포켓몬 스타일) ══════════ -->
+  <div id="char-screen" class="screen hidden">
+    <div class="char-inner">
+      <h2>당신은 누구인가요?</h2>
+      <p class="char-desc">함께 모험을 떠날 캐릭터를 골라 주세요!</p>
+      <div class="char-cards">
+        <div class="char-card" id="card-m" data-gender="m">
+          <canvas id="preview-m" width="220" height="260"></canvas>
+          <div class="char-label">👦 남자</div>
+        </div>
+        <div class="char-card" id="card-f" data-gender="f">
+          <canvas id="preview-f" width="220" height="260"></canvas>
+          <div class="char-label">👧 여자</div>
+        </div>
+      </div>
+      <div class="char-name-row">
+        <label for="input-name">이름</label>
+        <input id="input-name" type="text" maxlength="8" placeholder="이름을 입력하세요" autocomplete="off">
+      </div>
+      <button id="btn-char-ok" class="big-btn" disabled>✨ 모험을 떠나요!</button>
+    </div>
+  </div>
+
+  <!-- ══════════ 게임 HUD ══════════ -->
+  <div id="hud" class="hidden">
+    <div id="quest-banner" class="hidden"><span class="q-icon">📌</span><span id="quest-text"></span></div>
+    <button id="notebook-btn">📔 <span id="nb-num">0</span>/9</button>
+    <div id="bond-gauge" class="hidden">
+      <span id="bond-label">💕 친밀도</span>
+      <div class="bond-bar"><div id="bond-fill"></div></div>
+      <span id="bond-pct">0%</span>
+    </div>
+    <div id="interact-prompt" class="hidden"><kbd>F</kbd> <span id="interact-label">말하기</span></div>
+
+    <!-- 대화창 -->
+    <div id="dialogue-box" class="hidden">
+      <div id="dlg-portrait">🙂</div>
+      <div class="dlg-body">
+        <div id="dlg-speaker">???</div>
+        <div id="dlg-text"></div>
+      </div>
+      <div id="dlg-next">▼</div>
+    </div>
+
+    <!-- 태블릿용 터치 컨트롤 -->
+    <div id="touch-controls">
+      <div id="joystick-zone"><div id="joystick-base"><div id="joystick-knob"></div></div></div>
+      <div id="action-buttons">
+        <button id="btn-touch-f" class="touch-btn">F<span>상호작용</span></button>
+        <button id="btn-touch-jump" class="touch-btn jump">⬆<span>점프</span></button>
+      </div>
+    </div>
+    <div id="key-guide">이동 <kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd>/<kbd>←↑↓→</kbd> · 점프 <kbd>Space</kbd> · 상호작용 <kbd>F</kbd></div>
+  </div>
+
+  <!-- 미니게임/엔딩 오버레이가 여기에 동적으로 생성됨 -->
+  <div id="overlay-root"></div>
+
+  <!-- 글리치 효과 레이어 -->
+  <div id="glitch-layer" class="hidden"></div>
+
+  <!-- 화면 전환 페이드 -->
+  <div id="fade"></div>
+</div>
+
+<script src="https://unpkg.com/three@0.147.0/build/three.min.js"></script>
+<script src="js/data.js"></script>
+<script src="js/state.js"></script>
+<script src="js/ui.js"></script>
+<script src="js/notebook.js"></script>
+<script src="js/characters.js"></script>
+<script src="js/world.js"></script>
+<script src="js/player.js"></script>
+<script src="js/minigames.js"></script>
+<script src="js/endings.js"></script>
+<script src="js/episodes.js"></script>
+<script src="js/main.js"></script>
+</body>
+</html>

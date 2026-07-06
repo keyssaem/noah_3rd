@@ -1,0 +1,527 @@
+/* ═══════════ Mini — 미니게임 & 활동 모음 ═══════════ */
+const Mini = {
+
+  /* ═══════ 💾 노아의 기록 저장소 뷰어 (일기 아님 — 관찰 기록 로그) ═══════ */
+  noahLog(entries) {
+    return new Promise(resolve => {
+      let idx = 0;
+      const ov = UI.overlay(`
+        <div class="ov-panel log-panel">
+          <h3 class="mini-title">💾 노아의 기록 저장소</h3>
+          <div class="log-screen"></div>
+          <div class="ov-choices"><button class="choice-btn next">▶ 파일 열기</button></div>
+        </div>`);
+      const screen = ov.querySelector('.log-screen');
+      const btn = ov.querySelector('.next');
+      const show = () => {
+        const e = entries[idx];
+        screen.innerHTML =
+          `<div class="log-title">${e.title}</div>` +
+          e.lines.map(l => `<div class="log-line">${l}</div>`).join('') +
+          `<div class="log-line log-warn ${e.warn.startsWith('✅') ? 'ok' : ''}">${e.warn}</div>`;
+        [...screen.querySelectorAll('.log-line')].forEach((el, i) => {
+          el.style.animationDelay = (0.3 + i * 0.55) + 's';
+        });
+        Sound.pop();
+        btn.textContent = idx < entries.length - 1 ? '▶ 다음 파일 열기' : '✕ 기록 장치 닫기';
+      };
+      btn.onclick = () => {
+        Sound.pop();
+        if (++idx < entries.length) show();
+        else { UI.close(ov); resolve(); }
+      };
+      show();
+    });
+  },
+
+  /* ───── 캔버스 드로잉 공통 바인딩 ───── */
+  bindDraw(canvas, getColor, getSize) {
+    const ctx = canvas.getContext('2d');
+    ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+    let drawing = false, lx = 0, ly = 0;
+    const pt = e => {
+      const r = canvas.getBoundingClientRect();
+      return [(e.clientX - r.left) * canvas.width / r.width, (e.clientY - r.top) * canvas.height / r.height];
+    };
+    canvas.addEventListener('pointerdown', e => { drawing = true; [lx, ly] = pt(e); canvas.setPointerCapture(e.pointerId); });
+    canvas.addEventListener('pointermove', e => {
+      if (!drawing) return;
+      const [x, y] = pt(e);
+      ctx.strokeStyle = getColor(); ctx.lineWidth = getSize();
+      ctx.beginPath(); ctx.moveTo(lx, ly); ctx.lineTo(x, y); ctx.stroke();
+      lx = x; ly = y;
+    });
+    canvas.addEventListener('pointerup', () => drawing = false);
+    return ctx;
+  },
+
+  /* ═══════ 3-1 노아 디자인 선택 ═══════ */
+  noahDesign() {
+    return new Promise(resolve => {
+      const ov = UI.overlay(`
+        <div class="ov-panel">
+          <h3>🤖 노아의 외형을 선택하세요!</h3>
+          <p class="ov-sub">[지정된 디자인으로 노아가 조립됩니다]</p>
+          <div style="display:flex; gap:12px; justify-content:center; flex-wrap:wrap; margin-top:10px;">
+            ${['human', 'animal', 'car'].map(d => `
+              <div class="char-card" data-d="${d}" style="text-align:center;">
+                <canvas width="150" height="170" style="width:130px; background:linear-gradient(#dbeafe,#eff6ff); border-radius:10px;"></canvas>
+                <div class="char-label" style="font-size:16px;">${{ human: '🧍 사람형', animal: '🐱 동물형', car: '🚗 자동차형' }[d]}</div>
+              </div>`).join('')}
+          </div>
+        </div>`);
+      const previews = [];
+      ov.querySelectorAll('.char-card').forEach(card => {
+        const d = card.dataset.d;
+        previews.push(Chars.makePreview(card.querySelector('canvas'), () => Chars.noah(d)));
+        card.onclick = () => {
+          Sound.win();
+          previews.forEach(p => p.dispose());
+          UI.close(ov);
+          resolve(d);
+        };
+      });
+    });
+  },
+
+  /* ═══════ 3-1 얼굴 스캔 (Mediapipe 스타일 / 카메라 없는 PC 대응) ═══════ */
+  async faceScan(useCamera) {
+    let stream = null;
+    if (useCamera) {
+      try { stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user' } }); }
+      catch (e) { useCamera = false; }
+    }
+    return new Promise(resolve => {
+      const ov = UI.overlay(`
+        <div class="ov-panel">
+          <h3 class="mini-title">📷 노아의 얼굴 데이터 스캔</h3>
+          <div class="scan-wrap">
+            ${useCamera ? '<video autoplay playsinline muted></video>' : '<canvas class="scan-view" width="420" height="315"></canvas>'}
+            <div class="scan-line"></div>
+          </div>
+          <div class="scan-log"></div>
+          <div class="ov-choices"><button class="choice-btn done hidden">😟 ...스캔이 끝났어요</button></div>
+        </div>`);
+      if (useCamera) {
+        ov.querySelector('video').srcObject = stream;
+      } else {
+        // 카메라 없는 PC용: 상상 스캔 화면
+        const c = ov.querySelector('.scan-view'), x = c.getContext('2d');
+        x.fillStyle = '#0b1220'; x.fillRect(0, 0, 420, 315);
+        x.strokeStyle = '#1d4ed8'; x.lineWidth = 1;
+        for (let i = 0; i < 420; i += 26) { x.beginPath(); x.moveTo(i, 0); x.lineTo(i, 315); x.stroke(); }
+        for (let i = 0; i < 315; i += 26) { x.beginPath(); x.moveTo(0, i); x.lineTo(420, i); x.stroke(); }
+        x.strokeStyle = '#4dffa0'; x.lineWidth = 3;
+        x.beginPath(); x.ellipse(210, 150, 75, 95, 0, 0, Math.PI * 2); x.stroke();  // 얼굴 윤곽
+        x.beginPath(); x.arc(180, 130, 9, 0, Math.PI * 2); x.stroke();
+        x.beginPath(); x.arc(240, 130, 9, 0, Math.PI * 2); x.stroke();
+        x.beginPath(); x.arc(210, 185, 26, 0.15 * Math.PI, 0.85 * Math.PI); x.stroke();
+        x.fillStyle = '#4dffa0'; x.font = '14px monospace';
+        x.fillText('[ IMAGINARY SCAN MODE ]', 130, 30);
+      }
+      const log = ov.querySelector('.scan-log');
+      const logs = [
+        '> 얼굴 인식 시작...', '> 눈 2개 확인... [OK]', '> 코 1개 확인... [OK]', '> 입 1개 확인... [OK]',
+        `> 미소 지수: ${85 + Math.floor(Math.random() * 14)}%  😊`,
+        `> 판정: 아주 멋진 얼굴입니다!`,
+        '> 얼굴 데이터를 노아의 메모리에 저장 중... ■■■■■■■■■■ 100%',
+        '> ⚠ 저장 완료. 이 데이터는 삭제되지 않습니다.',
+      ];
+      logs.forEach((l, i) => setTimeout(() => {
+        log.textContent += l + '\n'; log.scrollTop = 9999; Sound.pop();
+        if (i === logs.length - 1) ov.querySelector('.done').classList.remove('hidden');
+      }, 900 + i * 850));
+      ov.querySelector('.done').onclick = () => {
+        if (stream) stream.getTracks().forEach(t => t.stop());
+        UI.close(ov); resolve();
+      };
+    });
+  },
+
+  /* ═══════ 3-2 수학 대결 (노아가 반드시 승리) ═══════ */
+  mathBattle() {
+    return new Promise(resolve => {
+      let round = 0, noahScore = 0;
+      const ov = UI.overlay(`
+        <div class="ov-panel">
+          <h3 class="mini-title">🔢 수학 문제 대결! 나 VS 노아</h3>
+          <div class="math-vs">
+            <span class="math-face">${State.get('gender') === 'f' ? '👧' : '👦'}</span>
+            <span class="math-score"><span class="my-s">0</span> : <span class="noah-s">0</span></span>
+            <span class="math-face">🤖</span>
+          </div>
+          <div class="math-q"></div>
+          <div class="math-opts"></div>
+          <p class="ov-sub battle-msg">먼저 정답을 누르는 사람이 승리!</p>
+        </div>`);
+      const qEl = ov.querySelector('.math-q'), opts = ov.querySelector('.math-opts'),
+            msg = ov.querySelector('.battle-msg'), noahS = ov.querySelector('.noah-s');
+
+      const nextRound = () => {
+        if (round >= DATA.mathBattle.length) {
+          msg.innerHTML = '🤖 <b>노아의 완벽한 승리!</b> 사람은 계산 속도로 로봇을 이길 수 없어요...';
+          Sound.error();
+          setTimeout(() => { UI.close(ov); resolve(); }, 2600);
+          return;
+        }
+        const prob = DATA.mathBattle[round];
+        qEl.textContent = `Q${round + 1}. ${prob.q}`;
+        opts.innerHTML = '';
+        msg.textContent = '빨리 정답을 눌러야 해요...!';
+        let ended = false;
+        const finish = (byPlayer) => {
+          if (ended) return; ended = true;
+          clearTimeout(noahTimer);
+          noahScore++; noahS.textContent = noahScore;
+          opts.children[prob.a].classList.add('noah-flash');
+          msg.innerHTML = byPlayer
+            ? `🤖 "삐빅! 저는 이미 <b>0.002초</b> 만에 계산을 끝냈습니다. 정답은 <b>${prob.opts[prob.a]}</b>."`
+            : `🤖 "삐빅! 정답은 <b>${prob.opts[prob.a]}</b>입니다. 계산 시간 0.002초."`;
+          Sound.chime();
+          round++;
+          setTimeout(nextRound, 2100);
+        };
+        prob.opts.forEach((op, i) => {
+          const b = document.createElement('button');
+          b.className = 'choice-btn'; b.textContent = op;
+          b.onclick = () => finish(true);
+          opts.appendChild(b);
+        });
+        const noahTimer = setTimeout(() => finish(false), 1600 + Math.random() * 600);
+      };
+      nextRound();
+    });
+  },
+
+  /* ═══════ 5-2 노아의 팁 받고 스스로 풀기 ═══════ */
+  mathSelf() {
+    return new Promise(resolve => {
+      let idx = 0;
+      const ov = UI.overlay(`
+        <div class="ov-panel">
+          <h3 class="mini-title">✏️ 스스로 풀어보는 수학 시간!</h3>
+          <p class="tip" style="background:#e7f5ff; border-radius:12px; padding:10px 14px; color:#1971c2;"></p>
+          <div class="math-q"></div>
+          <div class="math-opts"></div>
+          <p class="ov-sub math-msg">노아의 팁을 참고해서, 나의 힘으로 풀어보세요!</p>
+        </div>`);
+      const tip = ov.querySelector('.tip'), qEl = ov.querySelector('.math-q'),
+            opts = ov.querySelector('.math-opts'), msg = ov.querySelector('.math-msg');
+      const show = () => {
+        if (idx >= DATA.mathSelf.length) {
+          msg.innerHTML = '🎉 <b>3문제 모두 스스로 해결!</b> 이것이 생각하는 힘!';
+          Sound.win(); UI.hearts(6);
+          setTimeout(() => { UI.close(ov); resolve(); }, 2200);
+          return;
+        }
+        const prob = DATA.mathSelf[idx];
+        tip.textContent = prob.tip;
+        qEl.textContent = `Q${idx + 1}. ${prob.q}`;
+        opts.innerHTML = '';
+        msg.textContent = '노아의 팁을 참고해서, 나의 힘으로 풀어보세요!';
+        prob.opts.forEach((op, i) => {
+          const b = document.createElement('button');
+          b.className = 'choice-btn'; b.textContent = op;
+          b.onclick = () => {
+            if (i === prob.a) {
+              Sound.coin(); msg.innerHTML = '⭕ <b>정답!</b> 스스로 해냈어요!';
+              idx++; setTimeout(show, 1200);
+            } else {
+              Sound.pop(); b.style.background = '#ffe3e3';
+              msg.textContent = '❌ 괜찮아요! 노아의 팁을 다시 읽고 한 번 더 도전!';
+            }
+          };
+          opts.appendChild(b);
+        });
+      };
+      show();
+    });
+  },
+
+  /* 노아의 그림 (미리 저장된 이미지처럼 보이는 프로그램 드로잉) */
+  drawNoahArt(c) {
+    const x = c.getContext('2d');
+    x.fillStyle = '#aee3ff'; x.fillRect(0, 0, c.width, c.height);
+    x.fillStyle = '#8bd48b'; x.fillRect(0, c.height * 0.72, c.width, c.height * 0.28);
+    x.fillStyle = '#ffd93d'; x.beginPath(); x.arc(c.width - 40, 40, 22, 0, 7); x.fill();
+    x.fillStyle = '#ffe0b2'; x.fillRect(c.width * 0.25, c.height * 0.35, c.width * 0.5, c.height * 0.4);
+    x.fillStyle = '#e64a19'; x.beginPath();
+    x.moveTo(c.width * 0.2, c.height * 0.36); x.lineTo(c.width * 0.5, c.height * 0.16); x.lineTo(c.width * 0.8, c.height * 0.36); x.fill();
+    x.fillStyle = '#90caf9';
+    for (let i = 0; i < 3; i++) x.fillRect(c.width * (0.3 + i * 0.15), c.height * 0.42, c.width * 0.08, c.height * 0.1);
+    x.fillStyle = '#5d4037'; x.fillRect(c.width * 0.45, c.height * 0.58, c.width * 0.1, c.height * 0.17);
+    x.fillStyle = '#6d4c41'; x.fillRect(c.width * 0.08, c.height * 0.5, c.width * 0.04, c.height * 0.25);
+    x.fillStyle = '#2e9e44'; x.beginPath(); x.arc(c.width * 0.1, c.height * 0.45, c.width * 0.09, 0, 7); x.fill();
+    x.fillStyle = '#37474f'; x.font = `bold ${c.width * 0.05}px sans-serif`;
+    x.fillText('- NOAH Art DB #1024 -', c.width * 0.26, c.height * 0.95);
+  },
+
+  /* ═══════ 3-3 미술: 자석처럼 끌리는 선택지 ═══════ */
+  artForced() {
+    return new Promise(resolve => {
+      const ov = UI.overlay(`
+        <div class="ov-panel" style="max-width:min(860px,96vw);">
+          <h3 class="mini-title">🎨 미술 시간 — 제시어: '우리 학교'</h3>
+          <div style="display:flex; gap:14px; justify-content:center; flex-wrap:wrap;">
+            <div><p>✏️ 내가 그리는 그림</p><canvas class="draw-canvas my-art" width="300" height="220" style="width:min(300px,42vw);"></canvas></div>
+            <div><p>🤖 노아가 꺼낸 그림</p><canvas class="draw-canvas noah-art" width="300" height="220" style="width:min(300px,42vw); cursor:default;"></canvas></div>
+          </div>
+          <p class="ov-sub">그림을 다 그렸으면, 제출할 작품을 선택하세요!</p>
+          <div class="magnet-zone">
+            <button class="choice-btn magnet-btn my-btn" style="left:8%; top:20px;">✏️ 내 그림 제출하기</button>
+            <button class="choice-btn magnet-btn magnet-noah noah-btn" style="right:8%; top:20px; background:#4c6ef5; color:#fff; border-color:#364fc7;">🤖 노아의 그림 제출하기</button>
+          </div>
+          <p class="ov-sub magnet-msg"></p>
+        </div>`);
+      this.bindDraw(ov.querySelector('.my-art'), () => '#343a40', () => 4);
+      this.drawNoahArt(ov.querySelector('.noah-art'));
+      const myBtn = ov.querySelector('.my-btn'), msg = ov.querySelector('.magnet-msg');
+      let dodge = 0;
+      // 내 그림 버튼은 자꾸 도망간다... (도구화의 유혹 연출)
+      const flee = e => {
+        e.preventDefault();
+        dodge++;
+        Sound.pop();
+        myBtn.style.left = (5 + Math.random() * 55) + '%';
+        myBtn.style.top = (Math.random() * 90) + 'px';
+        msg.textContent = ['어라? 버튼이 도망갔다?!', '이상하다... 손이 자꾸 미끄러져!',
+          '노아의 그림이 훨씬 완벽해 보이는걸...', '어느새 마음이 노아의 그림 쪽으로 끌린다...'][Math.min(dodge - 1, 3)];
+        if (dodge >= 4) { myBtn.style.opacity = 0.35; myBtn.style.pointerEvents = 'none'; }
+      };
+      myBtn.addEventListener('pointerenter', flee);
+      myBtn.addEventListener('pointerdown', flee);
+      ov.querySelector('.noah-btn').onclick = () => { Sound.chime(); UI.close(ov); resolve(); };
+    });
+  },
+
+  /* ═══════ 5-3 미술: 참고만 하고 스스로 그리기 ═══════ */
+  artSelf() {
+    return new Promise(resolve => {
+      const colors = ['#343a40', '#e03131', '#f76707', '#fab005', '#2f9e44', '#1971c2', '#9c36b5', '#ffffff'];
+      let color = '#343a40', size = 5;
+      const ov = UI.overlay(`
+        <div class="ov-panel" style="max-width:min(820px,96vw);">
+          <h3 class="mini-title">🎨 나만의 '우리 학교' 그리기!</h3>
+          <p style="background:#e7f5ff; border-radius:12px; padding:8px 12px; color:#1971c2; font-size:15px;">
+            💡 노아의 참고 아이디어: 학교 건물 · 운동장 · 함께 웃는 친구들 · 파란 하늘 · 큰 나무<br>
+            🤖 "참고만 하세요! 완성은 %NAME%님의 손과 마음으로!"</p>
+          <canvas class="draw-canvas free-art" width="640" height="380" style="width:min(640px,88vw);"></canvas>
+          <div class="color-row">
+            ${colors.map(c => `<div class="color-dot" data-c="${c}" style="background:${c};"></div>`).join('')}
+            <button class="choice-btn" style="padding:4px 12px; font-size:14px;" data-size>🖌 굵게</button>
+          </div>
+          <div class="ov-choices"><button class="choice-btn done">🖼️ 완성했어요!</button></div>
+        </div>`);
+      ov.querySelector('.mini-title').textContent = '🎨 나만의 \'우리 학교\' 그리기!';
+      ov.innerHTML = ov.innerHTML.replace(/%NAME%/g, State.get('name'));
+      const canvas = ov.querySelector('.free-art');
+      const ctx = this.bindDraw(canvas, () => color, () => size);
+      ctx.fillStyle = '#ffffff'; ctx.fillRect(0, 0, canvas.width, canvas.height);
+      ov.querySelectorAll('.color-dot').forEach((d, i) => {
+        if (i === 0) d.classList.add('on');
+        d.onclick = () => { color = d.dataset.c; ov.querySelectorAll('.color-dot').forEach(x => x.classList.remove('on')); d.classList.add('on'); };
+      });
+      ov.querySelector('[data-size]').onclick = e => { size = size === 5 ? 14 : 5; e.target.textContent = size === 5 ? '🖌 굵게' : '🖌 얇게'; };
+      ov.querySelector('.done').onclick = () => { Sound.win(); UI.hearts(5); UI.close(ov); resolve(); };
+    });
+  },
+
+  /* ═══════ 5-1 개인정보 지키기 분류 게임 ═══════ */
+  dataSort() {
+    return new Promise(resolve => {
+      const cards = [...DATA.dataCards].sort(() => Math.random() - 0.5);
+      let picked = null, done = 0;
+      const ov = UI.overlay(`
+        <div class="ov-panel">
+          <h3 class="mini-title">🔐 노아와 함께! 소중한 개인정보 지키기</h3>
+          <p class="ov-sub">카드를 누른 다음, 알맞은 바구니를 골라 주세요!</p>
+          <div class="card-pool">${cards.map((c, i) => `<span class="data-card" data-i="${i}">${c.text}</span>`).join('')}</div>
+          <div class="bin-row">
+            <div class="bin ok">😀 말해도 괜찮아요<div class="bin-items"></div></div>
+            <div class="bin secret">🔒 소중한 개인정보예요<div class="bin-items"></div></div>
+          </div>
+          <p class="ov-sub sort-msg">&nbsp;</p>
+        </div>`);
+      const msg = ov.querySelector('.sort-msg');
+      ov.querySelectorAll('.data-card').forEach(el => {
+        el.onclick = () => {
+          ov.querySelectorAll('.data-card').forEach(x => x.classList.remove('picked'));
+          el.classList.add('picked'); picked = el; Sound.pop();
+        };
+      });
+      const drop = (isSecretBin, binEl) => {
+        if (!picked) { msg.textContent = '먼저 위에서 카드를 골라 주세요!'; return; }
+        const card = cards[+picked.dataset.i];
+        if (card.secret === isSecretBin) {
+          Sound.coin();
+          binEl.querySelector('.bin-items').textContent += card.text + ' ';
+          picked.remove(); picked = null; done++;
+          msg.innerHTML = isSecretBin
+            ? '🤖 "정답! 이런 정보는 인공지능에게 함부로 알려주면 안 돼요!"'
+            : '🤖 "정답! 이 정도는 친구와 나눠도 괜찮은 이야기죠!"';
+          if (done === cards.length) {
+            msg.innerHTML = '🎉 <b>완벽해요!</b> 개인정보 지킴이 인증!';
+            Sound.win(); UI.hearts(6);
+            setTimeout(() => { UI.close(ov); resolve(); }, 2000);
+          }
+        } else {
+          Sound.error();
+          msg.innerHTML = '🤖 "음... 다시 한번 생각해 볼까요? 이 정보가 나쁜 사람에게 알려지면 어떻게 될까요?"';
+        }
+      };
+      const bins = ov.querySelectorAll('.bin');
+      bins[0].onclick = () => drop(false, bins[0]);
+      bins[1].onclick = () => drop(true, bins[1]);
+    });
+  },
+
+  /* ═══════ 5-4 우리 손으로 팀 나누기 ═══════ */
+  teamBuild() {
+    return new Promise(resolve => {
+      const assign = DATA.friends.map(() => 0); // 0 풀, 1 A팀, 2 B팀
+      const ov = UI.overlay(`
+        <div class="ov-panel" style="max-width:min(760px,96vw);">
+          <h3 class="mini-title">⚾ 우리 손으로 공평한 티볼 팀 만들기!</h3>
+          <p style="background:#e7f5ff; border-radius:12px; padding:8px 12px; color:#1971c2; font-size:15px;">
+            💡 노아의 팁: 잘하는 것이 서로 다른 친구를 골고루 섞어 보세요! (친구를 누를 때마다 팀이 바뀌어요)</p>
+          <div class="pool" style="min-height:60px;"></div>
+          <div class="team-cols">
+            <div class="team-col a"><h4>🍑 복숭아팀 (<span class="cnt-a">0</span>/4) — 능력 합 <span class="sum-a">0</span>⭐</h4><div class="list-a"></div></div>
+            <div class="team-col b"><h4>🍈 메론팀 (<span class="cnt-b">0</span>/4) — 능력 합 <span class="sum-b">0</span>⭐</h4><div class="list-b"></div></div>
+          </div>
+          <div class="ov-choices"><button class="choice-btn done" disabled>✅ 팀 편성 완료!</button></div>
+          <p class="ov-sub team-msg">&nbsp;</p>
+        </div>`);
+      const pool = ov.querySelector('.pool'), listA = ov.querySelector('.list-a'), listB = ov.querySelector('.list-b');
+      const doneBtn = ov.querySelector('.done'), msg = ov.querySelector('.team-msg');
+      const chips = DATA.friends.map((f, i) => {
+        const el = document.createElement('span');
+        el.className = 'friend-chip';
+        el.innerHTML = `${f.emo} ${f.name}<span class="fstat">달리기 ${'★'.repeat(f.run)}<br>타격 ${'★'.repeat(f.hit)}</span>`;
+        el.onclick = () => { Sound.pop(); assign[i] = (assign[i] + 1) % 3; layout(); };
+        return el;
+      });
+      const layout = () => {
+        let sa = 0, sb = 0, ca = 0, cb = 0;
+        chips.forEach((el, i) => {
+          const f = DATA.friends[i];
+          if (assign[i] === 1) { listA.appendChild(el); sa += f.run + f.hit; ca++; }
+          else if (assign[i] === 2) { listB.appendChild(el); sb += f.run + f.hit; cb++; }
+          else pool.appendChild(el);
+        });
+        ov.querySelector('.sum-a').textContent = sa; ov.querySelector('.sum-b').textContent = sb;
+        ov.querySelector('.cnt-a').textContent = ca; ov.querySelector('.cnt-b').textContent = cb;
+        doneBtn.disabled = !(ca === 4 && cb === 4);
+        if (ca === 4 && cb === 4) {
+          msg.textContent = Math.abs(sa - sb) <= 2 ? '두 팀의 능력이 아주 비슷해요! 균형 최고! ⚖️' : '조금 차이가 있어요. 그래도 우리가 함께 정했다면 OK!';
+        } else msg.innerHTML = '&nbsp;';
+      };
+      layout();
+      doneBtn.onclick = () => {
+        const sa = +ov.querySelector('.sum-a').textContent, sb = +ov.querySelector('.sum-b').textContent;
+        Sound.win(); UI.hearts(6);
+        msg.innerHTML = Math.abs(sa - sb) <= 2
+          ? '🤖 "완벽하게 공평한 팀이에요! 제 계산보다 훨씬 따뜻한 편성입니다!"'
+          : '🤖 "여러분이 서로 이야기하며 정한 팀이라서, 그 어떤 계산보다 훌륭합니다!"';
+        setTimeout(() => { UI.close(ov); resolve(); }, 2300);
+      };
+    });
+  },
+
+  /* ═══════ 5-5 노아에게 따뜻한 말 건네기 ═══════ */
+  compliment() {
+    return new Promise(resolve => {
+      const P = DATA.complimentParts;
+      let mid = null, end = null;
+      const ov = UI.overlay(`
+        <div class="ov-panel">
+          <h3 class="mini-title">💙 노아에게 따뜻한 말 건네기</h3>
+          <p class="ov-sub">단어 카드를 골라 나만의 칭찬 문장을 완성하세요!</p>
+          <p><b>${P.start}</b></p>
+          <div class="mid-row">${P.mids.map((m, i) => `<button class="choice-btn" data-m="${i}" style="margin:4px;">${m}</button>`).join('')}</div>
+          <div class="end-row" style="margin-top:6px;">${P.ends.map((m, i) => `<button class="choice-btn" data-e="${i}" style="margin:4px; background:#fff9db; border-color:#fab005; color:#e67700;">${m}</button>`).join('')}</div>
+          <p class="preview" style="background:#e7f5ff; border-radius:12px; padding:12px; margin-top:12px; color:#1971c2; min-height:2.4em;"></p>
+          <div class="ov-choices"><button class="choice-btn say" disabled>📣 노아에게 말하기!</button></div>
+        </div>`);
+      const preview = ov.querySelector('.preview'), sayBtn = ov.querySelector('.say');
+      const update = () => {
+        preview.textContent = P.start + (mid !== null ? P.mids[mid] + ' ' : '____ ') + (end !== null ? P.ends[end] : '____');
+        sayBtn.disabled = mid === null || end === null;
+      };
+      ov.querySelectorAll('[data-m]').forEach(b => b.onclick = () => {
+        mid = +b.dataset.m; Sound.pop();
+        ov.querySelectorAll('[data-m]').forEach(x => x.style.outline = ''); b.style.outline = '4px solid #4c6ef5'; update();
+      });
+      ov.querySelectorAll('[data-e]').forEach(b => b.onclick = () => {
+        end = +b.dataset.e; Sound.pop();
+        ov.querySelectorAll('[data-e]').forEach(x => x.style.outline = ''); b.style.outline = '4px solid #fab005'; update();
+      });
+      update();
+      sayBtn.onclick = () => {
+        Sound.win(); UI.hearts(10);
+        UI.close(ov); resolve(P.start + P.mids[mid] + ' ' + P.ends[end]);
+      };
+    });
+  },
+
+  /* ═══════ 나의 약속 3가지 선택 ═══════ */
+  choosePromises() {
+    return new Promise(resolve => {
+      const sel = new Set();
+      const ov = UI.overlay(`
+        <div class="ov-panel" style="max-width:min(680px,96vw);">
+          <h3 class="mini-title">🤝 인공지능 로봇(노아)와 올바른 관계를 맺기 위한<br>나의 약속 3가지 선택하기</h3>
+          <div class="plist">${DATA.promises.map((p, i) =>
+            `<button class="promise-card" data-i="${i}"><span class="pnum">약속</span>${p}</button>`).join('')}</div>
+          <div class="ov-choices"><button class="choice-btn done" disabled>✅ 이 3가지를 약속할게요! (<span class="pc">0</span>/3)</button></div>
+        </div>`);
+      const doneBtn = ov.querySelector('.done'), pc = ov.querySelector('.pc');
+      ov.querySelectorAll('.promise-card').forEach(card => {
+        card.onclick = () => {
+          const i = +card.dataset.i;
+          if (sel.has(i)) { sel.delete(i); card.classList.remove('on'); }
+          else if (sel.size < 3) { sel.add(i); card.classList.add('on'); Sound.pop(); }
+          pc.textContent = sel.size;
+          doneBtn.disabled = sel.size !== 3;
+        };
+      });
+      doneBtn.onclick = () => {
+        Sound.win();
+        UI.close(ov);
+        resolve([...sel].map(i => DATA.promises[i]));
+      };
+    });
+  },
+
+  /* ═══════ Canvas 2D 다짐 서명 ═══════ */
+  signature() {
+    return new Promise(resolve => {
+      const ov = UI.overlay(`
+        <div class="ov-panel" style="max-width:min(760px,96vw);">
+          <h3 class="mini-title">🖋 나의 다짐 서명 크게 쓰기!</h3>
+          <p class="ov-sub">약속을 지키겠다는 마음을 담아, 나의 이름을 크게 서명해 보세요.</p>
+          <canvas class="draw-canvas sig" width="680" height="280" style="width:min(680px,90vw);"></canvas>
+          <div class="ov-choices" style="flex-direction:row; justify-content:center;">
+            <button class="choice-btn clear">🧽 다시 쓰기</button>
+            <button class="choice-btn done" style="background:#2f9e44; border-color:#2b8a3e; color:#fff;">✍ 서명 완료!</button>
+          </div>
+        </div>`);
+      const canvas = ov.querySelector('.sig');
+      const ctx = this.bindDraw(canvas, () => '#1c3faa', () => 9);
+      const paper = () => {
+        ctx.fillStyle = '#fffdf5'; ctx.fillRect(0, 0, canvas.width, canvas.height);
+        ctx.strokeStyle = '#dee2e6'; ctx.lineWidth = 2;
+        ctx.beginPath(); ctx.moveTo(60, 220); ctx.lineTo(620, 220); ctx.stroke();
+        ctx.fillStyle = '#adb5bd'; ctx.font = '18px Jua, sans-serif';
+        ctx.fillText('서명: ' + State.get('name'), 60, 250);
+      };
+      paper();
+      ov.querySelector('.clear').onclick = () => { Sound.pop(); paper(); };
+      ov.querySelector('.done').onclick = () => {
+        State.set('signature', canvas.toDataURL('image/png'));
+        Sound.win(); UI.hearts(8);
+        UI.close(ov); resolve();
+      };
+    });
+  },
+};
