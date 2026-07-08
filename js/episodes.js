@@ -28,7 +28,8 @@ const Flow = {
     UI.updateNotebook();
     UI.hideBond();
     State.set('bond', 0); State.set('bondType', 'intimacy');
-    State.set('favorite', '');
+    State.set('favorite', ''); State.set('relationDef', '');
+    State.set('logDecline', false); State.set('teamFair', false); State.set('chatCount', 0);
     World.build('home');
     Player.spawnChar();
     Player.setPos(-1.5, 0, -1.5, Math.PI / 2);
@@ -112,6 +113,7 @@ const Flow = {
     return lines.map(l => Object.assign({}, l, { text: l.text.replace(/%FAV%/g, fav) }));
   },
   async noahChat() {
+    State.set('chatCount', (State.get('chatCount') || 0) + 1);   // 행동 로그
     const fav = State.get('favorite');
     // 첫 잡담(3단계): 좋아하는 것 물어보고 기억하기
     if (this.phase === 1 && !fav) {
@@ -226,6 +228,9 @@ const Flow = {
 
     await UI.dialogue(DATA.dlg.mirror1_intro);
 
+    // 🎬 복도 워킹 컷씬 — 노아 3총사가 걸어온다 (발자국 소리 대사와 연결)
+    await UI.playVideo('media/noah-walk2.mp4');
+
     // customTrigger: noah_design — human / animal / car
     const design = await Mini.noahDesign();
     State.set('noahDesign', design);
@@ -263,6 +268,10 @@ const Flow = {
   /* ═══════ 3-2 거울2 : 수학 대결 & 숙제 떠넘기기 ═══════ */
   async mirror2() {
     await UI.dialogue(DATA.dlg.mirror2_intro);
+    // ✊✌️🖐 몸풀기 가위바위보 — 절대 이길 수 없는 대결 (MediaPipe/버튼 폴백)
+    await UI.dialogue(DATA.dlg.rps1_intro);
+    const fair = await Mini.rpsBattle('tool');
+    await UI.dialogue(fair === 'unfair' ? DATA.dlg.rps1_unfair : DATA.dlg.rps1_amazed);
     await Mini.mathBattle();
     await UI.dialogue(DATA.dlg.mirror2_after);
     UI.setBond('intimacy', 50);              // 💕 거울2 완료
@@ -391,6 +400,7 @@ const Flow = {
       { label: '😊 친절하고 정중하게 거절하기', value: 'decline' },
       { label: '🤷 지난번처럼 그냥 저장하게 두기', value: 'allow' },
     ]);
+    State.set('logDecline', pick === 'decline');   // 행동 로그
     if (pick === 'allow') {
       await UI.dialogue([
         { speaker: '나(독백)', text: '(잠깐...! 지난번에 뭔가 께름칙했던 기분이 떠올라. 내 정보는 소중하니까, 이번엔 정중하게 거절해 보자!)' },
@@ -405,6 +415,10 @@ const Flow = {
 
   /* ═══════ 5-2 거울2(존중) : 팁만 받고 스스로 풀기 ═══════ */
   async respect2() {
+    // 🎴 봉인 가위바위보 — 공정한 재대결 (수업 시작 전, 3-2와 수미상관)
+    await UI.dialogue(DATA.dlg.rps2_intro);
+    await Mini.rpsBattle('respect');
+    await UI.dialogue(DATA.dlg.rps2_after);
     await UI.dialogue(DATA.dlg.respect2_intro);
     await Mini.mathSelf();
     await UI.dialogue(DATA.dlg.respect2_after);
@@ -447,6 +461,12 @@ const Flow = {
     await Mini.teamBuild();
     await UI.dialogue(DATA.dlg.respect4_after);
     UI.setBond('respect', 80);               // 💙 거울4(존중) 완료
+
+    // ⑤ 서연의 인격화 서브 에피소드 — 반대편 벼랑도 경계하기 (관계 저울 게임)
+    World.addNPC(Chars.seoyeon(), 1.8, 2.8, -0.9);
+    await UI.dialogue(DATA.dlg.seoyeonIntro);
+    await Mini.balanceScale();
+    await UI.dialogue(DATA.dlg.seoyeonAfter);
 
     this.step = 'toHallway2';
     UI.quest('지금은 쉬는시간입니다. 복도로 이동하세요!');
@@ -495,6 +515,16 @@ const Flow = {
     await UI.dialogue([
       { speaker: '노아', text: '멋진 약속이에요! 저도 여러분에게 안전하고 따뜻한 친구...가 되도록 노력할게요!', emotion: 'happy' },
     ]);
+
+    // ⑥ 스스로 정하는 관계 문항 — "나는 노아를 ___(으)로 대하겠습니다"
+    await UI.dialogue(DATA.dlg.relationAsk);
+    const rel = await UI.textInput('나는 노아를 ______(으)로 대하겠습니다.',
+      '예) 반 친구, 똑똑한 도우미, 특별한 짝꿍...', '정답은 없어요! 노아는 사람도, 단순한 도구도 아니니까요.');
+    State.set('relationDef', rel);
+    await UI.dialogue([
+      { speaker: '노아', text: `'${rel}'... 저장하지 않아도 잊을 수 없는 대답입니다. 그 마음을 헌장에 새겨 주세요!`, emotion: 'happy' },
+    ]);
+
     await Mini.signature();
     UI.setBond('respect', 100);              // 💙 존중 100% 달성!
     await UI.wait(1400);

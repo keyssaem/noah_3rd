@@ -5,6 +5,10 @@ const State = {
     notebook: [], stage: 1,                // notebook: 이번 모험에서 모은 원칙 id
     bond: 0, bondType: 'intimacy',         // 관계 게이지 (3단계 친밀도 / 5단계 존중)
     favorite: '',                          // 노아 잡담에서 말한 '가장 좋아하는 것'
+    relationDef: '',                       // 나는 노아를 ___(으)로 대하겠습니다 (스스로 정하기)
+    logDecline: false,                     // 행동 로그: 5-1에서 정중히 거절했는가
+    teamFair: false,                       // 행동 로그: 팀 편성이 공평했는가
+    chatCount: 0,                          // 행동 로그: 노아와 자발적으로 나눈 잡담 횟수
     friendDef: '', friendReason: '',      // 나에게 친구란 ___ (수미상관 앞)
     ox1: '', ox1Reason: '',               // 3단계 O/X 질문
     ox2: '', ox2Reason: '',               // 6단계 O/X 재질문

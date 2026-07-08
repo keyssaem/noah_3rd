@@ -12,8 +12,8 @@
 <div id="app">
   <canvas id="game-canvas"></canvas>
 
-  <!-- ══════════ 1-2 메인 화면 ══════════ -->
-  <div id="menu-screen" class="screen">
+  <!-- ══════════ 1-2 메인 화면 (🎬 인트로 영상 재생 후 표시) ══════════ -->
+  <div id="menu-screen" class="screen hidden">
     <div class="menu-sky">
       <div class="cloud c1">☁️</div><div class="cloud c2">☁️</div><div class="cloud c3">☁️</div>
     </div>
@@ -24,7 +24,7 @@
       <div class="menu-buttons">
         <button id="btn-start" class="big-btn">🎮 모험 시작하기</button>
       </div>
-      <p class="menu-std">성취기준 [6도02-03] 인간과 인공지능 로봇 간의 도덕에 기반을 둔 관계 형성</p>
+      <p class="menu-std">제20회 디지털교육연구대회 (교육용 SW·AI)</p>
     </div>
   </div>
 
@@ -55,6 +55,7 @@
   <div id="hud" class="hidden">
     <div id="quest-banner" class="hidden"><span class="q-icon">📌</span><span id="quest-text"></span></div>
     <button id="notebook-btn">📔 <span id="nb-num">0</span>/9</button>
+    <button id="home-btn" title="처음 화면으로">🏠</button>
     <div id="bond-gauge" class="hidden">
       <span id="bond-label">💕 친밀도</span>
       <div class="bond-bar"><div id="bond-fill"></div></div>
@@ -97,6 +98,7 @@
 <script src="js/data.js"></script>
 <script src="js/state.js"></script>
 <script src="js/ui.js"></script>
+<script src="js/mp.js"></script>
 <script src="js/notebook.js"></script>
 <script src="js/characters.js"></script>
 <script src="js/world.js"></script>

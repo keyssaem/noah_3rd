@@ -15,21 +15,99 @@ const Mini = {
       const btn = ov.querySelector('.next');
       const show = () => {
         const e = entries[idx];
+        screen.scrollTop = 0;
         screen.innerHTML =
           `<div class="log-title">${e.title}</div>` +
           e.lines.map(l => `<div class="log-line">${l}</div>`).join('') +
           `<div class="log-line log-warn ${e.warn.startsWith('✅') ? 'ok' : ''}">${e.warn}</div>`;
-        [...screen.querySelectorAll('.log-line')].forEach((el, i) => {
+        const lineEls = [...screen.querySelectorAll('.log-line')];
+        lineEls.forEach((el, i) => {
           el.style.animationDelay = (0.3 + i * 0.55) + 's';
         });
         Sound.pop();
-        btn.textContent = idx < entries.length - 1 ? '▶ 다음 파일 열기' : '✕ 기록 장치 닫기';
+        // 📖 읽기 게이트 — 모든 줄 출력 + 스크롤 최하단 도달 후에만 버튼 활성화
+        const realLabel = idx < entries.length - 1 ? '▶ 다음 파일 열기' : '✕ 기록 장치 닫기';
+        btn.disabled = true;
+        btn.textContent = '📖 기록을 읽는 중...';
+        let typedDone = false;
+        const atBottom = () => screen.scrollHeight - screen.scrollTop - screen.clientHeight < 24;
+        const tryUnlock = () => {
+          if (!typedDone || !atBottom()) return;
+          btn.disabled = false;
+          btn.textContent = realLabel;
+          screen.onscroll = null;
+        };
+        setTimeout(() => {
+          typedDone = true;
+          if (!atBottom()) btn.textContent = '⬇ 끝까지 읽어 주세요';
+          tryUnlock();
+        }, 300 + lineEls.length * 550 + 500);
+        screen.onscroll = tryUnlock;
       };
       btn.onclick = () => {
+        if (btn.disabled) return;
         Sound.pop();
         if (++idx < entries.length) show();
         else { UI.close(ov); resolve(); }
       };
+      show();
+    });
+  },
+
+  /* ═══════ ⚖️ 관계 저울 게임 — 도구화도, 인격화도 아닌 바람직한 관계 찾기 ═══════ */
+  balanceScale() {
+    return new Promise(resolve => {
+      const cards = [...DATA.balanceCards].sort(() => Math.random() - 0.5);
+      const needlePos = { tool: '8%', balance: '50%', person: '92%' };
+      let idx = 0;
+      const ov = UI.overlay(`
+        <div class="ov-panel" style="max-width:min(720px,96vw);">
+          <h3 class="mini-title">⚖️ 서연이와 함께! 관계 저울 맞추기</h3>
+          <p class="ov-sub">카드 속 행동은 노아를 '무엇'으로 대하는 걸까요? 알맞은 구역을 눌러 주세요! (<span class="bal-n">1</span>/${cards.length})</p>
+          <div class="math-q bal-card"></div>
+          <div class="spectrum" style="margin:10px auto 0;">
+            <div class="spec-zones">
+              <button class="spec-zone bad bal-btn" data-k="tool">🔧 도구로 대함<small>단순한 도구로 봄</small></button>
+              <button class="spec-zone good bal-btn" data-k="balance">💙 바람직한 관계<small>도덕에 기반을 둔 관계</small></button>
+              <button class="spec-zone bad2 bal-btn" data-k="person">👤 사람과 똑같이 대함<small>인간과 동등하게 봄</small></button>
+            </div>
+            <div class="spec-track"><div class="spec-needle" style="left:50%;">▼</div></div>
+          </div>
+          <p class="ov-sub bal-msg" style="min-height:2.6em;">&nbsp;</p>
+        </div>`);
+      const cardEl = ov.querySelector('.bal-card'), msg = ov.querySelector('.bal-msg'),
+            needle = ov.querySelector('.spec-needle'), nEl = ov.querySelector('.bal-n');
+      const btns = [...ov.querySelectorAll('.bal-btn')];
+      let locked = false;
+      const show = () => {
+        cardEl.textContent = '📋 ' + cards[idx].text;
+        nEl.textContent = idx + 1;
+        needle.style.left = '50%';
+        msg.innerHTML = '&nbsp;';
+        locked = false;
+      };
+      btns.forEach(b => b.onclick = () => {
+        if (locked) return;
+        const k = b.dataset.k, answer = cards[idx].k;
+        if (k === answer) {
+          locked = true;
+          Sound.coin();
+          needle.style.left = needlePos[answer];
+          msg.textContent = DATA.balanceFeedback[answer];
+          idx++;
+          setTimeout(() => {
+            if (idx < cards.length) show();
+            else {
+              Sound.win(); UI.hearts(8);
+              msg.innerHTML = '🎉 <b>완벽해요!</b> 서연이도 이제 알겠대요!';
+              setTimeout(() => { UI.close(ov); resolve(); }, 2000);
+            }
+          }, 2100);
+        } else {
+          Sound.error();
+          msg.textContent = "🤖 음... 다시 생각해 볼까요? 이 행동은 저를 '무엇'으로 보는 걸까요?";
+        }
+      });
       show();
     });
   },
@@ -135,6 +213,387 @@ const Mini = {
         if (stream) stream.getTracks().forEach(t => t.stop());
         UI.close(ov); resolve();
       };
+    });
+  },
+
+  /* ═══════ ✊✌️🖐 가위바위보 대결 — MediaPipe 제스처 인식 + 버튼 폴백 ═══════
+     mode 'tool'    : 3-2 필승판 — 노아가 내 손을 보고 즉시 이기는 손을 냄 (0:3)
+                      → 슬로우 리플레이로 반응속도의 비밀 공개 → 공정성 질문 반환
+     mode 'respect' : 5-2 봉인판 — 노아가 먼저 골라 봉인(🎴) → 공정한 승부   */
+  _RPS: {
+    hands: { rock: '✊', paper: '🖐️', scissors: '✌️' },
+    beats: { rock: 'paper', paper: 'scissors', scissors: 'rock' },   // key를 이기는 손
+  },
+
+  async rpsBattle(mode) {
+    const tool = mode === 'tool';
+    const { hands: HANDS, beats: BEATS } = this._RPS;
+
+    /* ── Phase 0 게이트: 노아의 개인정보 안내 → 수락/거절 → 인식기 로드 ── */
+    let stream = await MP.camGate();
+    let rec = null;
+    if (stream) {
+      rec = await MP.ensureGesture();
+      if (!rec) { MP.stopCam(stream); stream = null; await UI.dialogue(DATA.dlg.camFailed); }
+    }
+    let camMode = !!(stream && rec);
+
+    const myFace = State.get('gender') === 'f' ? '👧' : '👦';
+    const ov = UI.overlay(`
+      <div class="ov-panel rps-panel">
+        <h3 class="mini-title">${tool ? '✊✌️🖐 가위바위보 대결! 나 VS 노아' : '🎴 봉인 가위바위보! 공정한 재대결'}</h3>
+        <div class="rps-arena">
+          <div class="rps-side">
+            <div class="rps-name">${myFace} 나</div>
+            <div class="rps-hand me">❔</div>
+            ${camMode ? '<video class="rps-cam" autoplay playsinline muted></video>' : ''}
+          </div>
+          <div class="rps-mid">
+            <div class="rps-score"><span class="rps-my">0</span> : <span class="rps-noah">0</span></div>
+            <div class="rps-count">준비!</div>
+          </div>
+          <div class="rps-side">
+            <div class="rps-name">🤖 노아</div>
+            <div class="rps-hand noah">❔</div>
+          </div>
+        </div>
+        <div class="rps-btns hidden">
+          <button class="rps-btn" data-h="rock">✊</button>
+          <button class="rps-btn" data-h="scissors">✌️</button>
+          <button class="rps-btn" data-h="paper">🖐️</button>
+        </div>
+        <p class="ov-sub rps-msg">첫 판을 준비하고 있어요...</p>
+      </div>`);
+    const myHand = ov.querySelector('.rps-hand.me'), noahHand = ov.querySelector('.rps-hand.noah'),
+          myS_el = ov.querySelector('.rps-my'), noahS_el = ov.querySelector('.rps-noah'),
+          cnt = ov.querySelector('.rps-count'), msg = ov.querySelector('.rps-msg'),
+          btns = ov.querySelector('.rps-btns');
+    const video = ov.querySelector('.rps-cam');
+    if (camMode) {
+      video.srcObject = stream;
+      await new Promise(r => { video.onloadeddata = r; setTimeout(r, 3000); });
+    }
+    const showMsg = t => { msg.innerHTML = t; };
+
+    const countdown = async () => {
+      for (const w of ['가위~', '바위~', '보!']) {
+        cnt.textContent = w; Sound.pop();
+        if (w !== '보!') await UI.wait(650);
+      }
+    };
+
+    /* 카메라 인식: 같은 손이 3프레임 연속 잡히면 확정 (+실제 추론시간 기록) */
+    const readHandCam = timeoutMs => new Promise(res => {
+      let last = null, streak = 0;
+      const t0 = performance.now();
+      const tick = () => {
+        const now = performance.now();
+        if (now - t0 > timeoutMs) return res(null);
+        let out = null, inferMs = 0;
+        try {
+          const s0 = performance.now();
+          const result = rec.recognizeForVideo(video, now);
+          inferMs = performance.now() - s0;
+          out = MP.rpsFromResult(result);
+        } catch (e) { return res(null); }
+        if (out && out === last) {
+          streak++;
+          if (streak >= 3) return res({ hand: out, seeMs: inferMs, cam: true });
+        } else { last = out; streak = out ? 1 : 0; }
+        requestAnimationFrame(tick);
+      };
+      tick();
+    });
+
+    const readHandBtn = () => new Promise(res => {
+      btns.classList.remove('hidden');
+      ov.querySelectorAll('.rps-btn').forEach(b => b.onclick = () => {
+        Sound.pop(); btns.classList.add('hidden');
+        res({ hand: b.dataset.h, seeMs: 0.8 + Math.random(), cam: false });
+      });
+    });
+
+    let camFails = 0;
+    const getPlayerHand = async () => {
+      if (camMode) {
+        showMsg('카메라에 손을 보여 주세요! ✊ ✌️ 🖐️');
+        const r = await readHandCam(2600);
+        if (r) { camFails = 0; return r; }
+        camFails++;
+        if (camFails >= 2) {
+          camMode = false;
+          if (video) video.classList.add('hidden');
+          showMsg('손이 잘 안 보여서, 버튼 모드로 바꿀게요!');
+          await UI.wait(1300);
+        } else {
+          showMsg('손이 잘 안 보였어요! 카메라에 조금 더 가까이~ 다시 한 판!');
+          await UI.wait(1400);
+          return null;                             // 이 라운드 재시도
+        }
+      }
+      showMsg('아래 버튼으로 손을 내 주세요!');
+      return await readHandBtn();
+    };
+
+    /* ── 3판 진행 ── */
+    const records = [];
+    let myS = 0, noahS = 0, round = 0;
+    while (round < 3) {
+      myHand.textContent = '❔';
+      let sealed = null;
+      if (tool) {
+        noahHand.textContent = '❔';
+      } else {
+        sealed = ['rock', 'paper', 'scissors'][Math.floor(Math.random() * 3)];
+        noahHand.textContent = '🎴';
+        showMsg('🔒 노아가 먼저 골라서 <b>봉인</b>했어요! 이제 내 차례!');
+        await UI.wait(1200);
+      }
+      cnt.textContent = `${round + 1}판`;
+      await UI.wait(700);
+      await countdown();
+      const p = await getPlayerHand();
+      if (!p) continue;                            // 인식 실패 → 같은 판 다시
+      myHand.textContent = HANDS[p.hand];
+
+      let nh, result;
+      if (tool) {
+        const pickMs = 15 + Math.random() * 25;    // 인식 직후 이기는 손 계산 (실측 연출)
+        await UI.wait(pickMs);
+        nh = BEATS[p.hand];
+        records.push({ my: p.hand, noah: nh, seeMs: p.seeMs, pickMs, cam: p.cam });
+        result = 'noah';
+      } else {
+        await UI.wait(500);
+        noahHand.classList.remove('flip'); void noahHand.offsetWidth;
+        noahHand.classList.add('flip'); Sound.chime();
+        nh = sealed;
+        result = p.hand === nh ? 'draw' : (BEATS[nh] === p.hand ? 'me' : 'noah');
+      }
+      noahHand.textContent = HANDS[nh];
+
+      if (result === 'me') { myS++; myS_el.textContent = myS; Sound.win(); UI.hearts(4); }
+      else if (result === 'noah') { noahS++; noahS_el.textContent = noahS; Sound.chime(); }
+      else Sound.pop();
+
+      if (tool) {
+        showMsg(round === 1
+          ? '🤔 (잠깐... 내가 내는 순간, 이미 노아의 손이 나와 있었어...?)'
+          : `🤖 "제가 이겼네요! (${myS}:${noahS})"`);
+      } else {
+        showMsg({
+          me:   '🤖 "졌다...! 그런데 이상하게, 즐거워요! 🎉"',
+          draw: '🤖 "비겼어요! 우리, 마음이 통했나 봐요!"',
+          noah: '🤖 "이겼다! 하지만 다음 판은 모르는 거예요~"',
+        }[result]);
+      }
+      round++;
+      await UI.wait(1900);
+    }
+
+    /* ── 종료 처리 ── */
+    if (tool) {
+      showMsg('🤖 <b>노아의 3연승!</b> ...그런데, 뭔가 이상하지 않았나요?');
+      Sound.error();
+      await UI.wait(2400);
+      UI.close(ov); MP.stopCam(stream);
+      await this._rpsReplay(records);
+      const a = await UI.choice('방금 그 대결... 공정한 게임이었을까요?', [
+        { label: '⚖️ 아니, 공정하지 않았어', value: 'unfair' },
+        { label: '🤖 그래도 노아가 대단한 것 같아', value: 'amazed' },
+      ], '정답은 없어요. 내 생각을 골라 보세요!');
+      State.set('rpsFair', a);
+      return a;
+    } else {
+      showMsg(myS > noahS ? '🎉 <b>내가 이겼다!</b> 노아도 함께 기뻐한다!'
+            : myS === noahS ? '😄 <b>무승부!</b> 둘 다 웃음이 터졌다!'
+            : '🤖 <b>노아의 승리!</b> 그런데... 분하지 않고 즐겁다!');
+      Sound.win(); UI.hearts(6);
+      await UI.wait(2600);
+      UI.close(ov); MP.stopCam(stream);
+      return { myS, noahS };
+    }
+  },
+
+  /* 🎬 슬로우 리플레이 — 노아 필승의 비밀 (실측 타이밍 공개) */
+  _rpsReplay(records) {
+    return new Promise(resolve => {
+      const { hands: HANDS } = this._RPS;
+      const r = records[records.length - 1];
+      const rows = [
+        { t: '0.000초', txt: r.cam ? `${HANDS[r.my]} 내 손이 카메라에 나타남` : `${HANDS[r.my]} 내가 버튼을 누름` },
+        { t: `+${(r.seeMs / 1000).toFixed(3)}초`, txt: '👁️ 노아가 내 손을 확인함' },
+        { t: `+${((r.seeMs + r.pickMs) / 1000).toFixed(3)}초`, txt: `${HANDS[r.noah]} 이기는 손을 계산해서 냄` },
+      ];
+      const ov = UI.overlay(`
+        <div class="ov-panel rps-replay">
+          <h3>🎬 마지막 판 슬로우 리플레이</h3>
+          <div class="rp-rows"></div>
+          <p class="rp-noah hidden">🤖 "저는 마음을 읽은 게 아니에요.<br>그냥... <b>사람보다 빨랐을 뿐</b>이에요."</p>
+          <div class="ov-choices"><button class="choice-btn ok hidden">...그랬구나</button></div>
+        </div>`);
+      const box = ov.querySelector('.rp-rows');
+      rows.forEach((row, i) => setTimeout(() => {
+        const d = document.createElement('div');
+        d.className = 'rp-row';
+        d.innerHTML = `<span class="rp-t">${row.t}</span><span>${row.txt}</span>`;
+        box.appendChild(d); Sound.pop();
+        if (i === rows.length - 1) setTimeout(() => {
+          ov.querySelector('.rp-noah').classList.remove('hidden');
+          ov.querySelector('.ok').classList.remove('hidden');
+          Sound.chime();
+        }, 1100);
+      }, 800 + i * 1250));
+      ov.querySelector('.ok').onclick = () => { Sound.pop(); UI.close(ov); resolve(); };
+    });
+  },
+
+  /* ═══════ ✋ 핀치 분류 피날레 — 수첩 9원칙 총정리 (MediaPipe 손 + 클릭 폴백) ═══════
+     엄지+검지로 카드를 집어 3개의 바구니(로봇/윤리/사용자)에 담는다.
+     카메라가 없거나 인식 실패 시: 카드 클릭 → 바구니 클릭 (dataSort 패턴) */
+  async pinchSort() {
+    const BINS = [
+      { key: 'robot',  icon: '🤖', label: '로봇이 지킬 약속' },
+      { key: 'ethics', icon: '🧭', label: '만드는 사람·사회의 약속' },
+      { key: 'user',   icon: '📱', label: '사용하는 나의 약속' },
+    ];
+    const cards = [...DATA.moralItems].sort(() => Math.random() - 0.5);
+    const setOf = id => DATA.moralItems.find(m => m.id === id).set;
+
+    // ── Phase 0 게이트: 카메라 안내 → 수락/거절 → 손 인식기 로드 ──
+    let stream = await MP.camGate();
+    let rec = null;
+    if (stream) {
+      rec = await MP.ensureHands();
+      if (!rec) { MP.stopCam(stream); stream = null; }
+    }
+    let camMode = !!(stream && rec);
+
+    return new Promise(resolve => {
+      const ov = UI.overlay(`
+        <div class="ov-panel pinch-panel">
+          <h3 class="mini-title">✋ 도덕 수첩 완성하기! — 9가지 약속 정리</h3>
+          <p class="ov-sub pinch-sub">${camMode
+            ? '엄지와 검지로 카드를 <b>콕 집어</b> 알맞은 바구니에 담아요!'
+            : '카드를 누른 다음, 알맞은 바구니를 눌러 담아요!'}</p>
+          <div class="pinch-stage">
+            <div class="pinch-pool">${cards.map(c =>
+              `<span class="pinch-card" data-id="${c.id}"><span class="pc-ic">${c.icon}</span>${c.title}</span>`).join('')}</div>
+            <div class="pinch-bins">${BINS.map(b =>
+              `<div class="pinch-bin" data-set="${b.key}"><div class="pb-head">${b.icon} ${b.label}</div><div class="pb-items"></div></div>`).join('')}</div>
+          </div>
+          <p class="ov-sub pinch-msg">&nbsp;</p>
+          ${camMode ? '<video class="pinch-cam" autoplay playsinline muted></video><div class="pinch-cursor">✦</div>' : ''}
+        </div>`);
+
+      const msg = ov.querySelector('.pinch-msg');
+      let placed = 0;
+      const total = cards.length;
+
+      /* ── 공통: 카드를 바구니에 놓기 시도 (정답이면 담고, 아니면 되돌림) ── */
+      const place = (cardEl, binKey) => {
+        if (!cardEl || cardEl.classList.contains('done')) return;
+        const bin = ov.querySelector(`.pinch-bin[data-set="${binKey}"]`);
+        if (setOf(cardEl.dataset.id) === binKey) {
+          Sound.coin();
+          cardEl.classList.add('done');
+          cardEl.classList.remove('picked', 'grabbed');
+          cardEl.style.cssText = '';
+          bin.querySelector('.pb-items').appendChild(cardEl);
+          bin.classList.add('flash'); setTimeout(() => bin.classList.remove('flash'), 400);
+          placed++;
+          msg.innerHTML = '🤖 "맞았어요! 딱 알맞은 바구니예요."';
+          if (placed >= total) finish();
+        } else {
+          Sound.error();
+          cardEl.classList.remove('picked', 'grabbed');
+          cardEl.style.cssText = '';
+          ov.querySelector('.pinch-pool').appendChild(cardEl);
+          cardEl.classList.add('shake'); setTimeout(() => cardEl.classList.remove('shake'), 450);
+          msg.innerHTML = '🤖 "음... 이 약속은 <b>누가</b> 지키는 약속이었죠? 다시 생각해 볼까요?"';
+        }
+      };
+
+      let rafId = null;
+      const finish = () => {
+        msg.innerHTML = '🎉 <b>도덕 수첩 완성!</b> 9가지 약속을 모두 담았어요!';
+        Sound.win(); UI.hearts(8);
+        State.set('pinchComplete', true);
+        if (rafId) cancelAnimationFrame(rafId);
+        MP.stopCam(stream);
+        setTimeout(() => { UI.close(ov); resolve(); }, 2400);
+      };
+
+      /* ── 폴백(클릭) 모드: 카드 클릭 → 바구니 클릭 ── */
+      let picked = null;
+      ov.querySelectorAll('.pinch-card').forEach(el => {
+        el.onclick = () => {
+          if (el.classList.contains('done')) return;
+          ov.querySelectorAll('.pinch-card').forEach(x => x.classList.remove('picked'));
+          el.classList.add('picked'); picked = el; Sound.pop();
+        };
+      });
+      ov.querySelectorAll('.pinch-bin').forEach(bin => {
+        bin.onclick = () => {
+          if (!picked) { msg.textContent = '먼저 위에서 약속 카드를 골라 주세요!'; return; }
+          const p = picked; picked = null;
+          place(p, bin.dataset.set);
+        };
+      });
+
+      /* ── 카메라(핀치) 모드: 손 커서 + 집기/놓기 ── */
+      if (camMode) {
+        const video = ov.querySelector('.pinch-cam');
+        const cursor = ov.querySelector('.pinch-cursor');
+        video.srcObject = stream;
+        let holding = null, wasPinching = false, grabCooldown = 0;
+
+        const hitTest = (sel, x, y) => {
+          for (const el of ov.querySelectorAll(sel)) {
+            if (el.classList.contains('done')) continue;
+            const r = el.getBoundingClientRect();
+            if (x >= r.left && x <= r.right && y >= r.top && y <= r.bottom) return el;
+          }
+          return null;
+        };
+
+        const loop = () => {
+          rafId = requestAnimationFrame(loop);
+          if (video.readyState < 2) return;
+          let res;
+          try { res = rec.recognizeForVideo ? null : null; } catch (e) {}
+          let info = null;
+          try { info = MP.pinchFromResult(rec.detectForVideo(video, performance.now())); } catch (e) { return; }
+          if (!info) { cursor.classList.remove('on'); wasPinching = false; return; }
+          cursor.classList.add('on');
+          const cx = (1 - info.x) * window.innerWidth;    // 거울 반전
+          const cy = info.y * window.innerHeight;
+          cursor.style.left = cx + 'px';
+          cursor.style.top = cy + 'px';
+          cursor.classList.toggle('pinch', info.pinching);
+          if (grabCooldown > 0) grabCooldown--;
+
+          if (info.pinching && !holding && grabCooldown === 0) {
+            const card = hitTest('.pinch-card', cx, cy);
+            if (card) {
+              holding = card; card.classList.add('grabbed'); Sound.pop();
+            }
+          }
+          if (holding) {
+            holding.style.left = cx + 'px';
+            holding.style.top = cy + 'px';
+          }
+          if (!info.pinching && wasPinching && holding) {
+            const bin = hitTest('.pinch-bin', cx, cy);
+            const h = holding; holding = null; grabCooldown = 8;
+            if (bin) place(h, bin.dataset.set);
+            else { h.classList.remove('grabbed'); h.style.cssText = ''; ov.querySelector('.pinch-pool').appendChild(h); }
+          }
+          wasPinching = info.pinching;
+        };
+        video.addEventListener('loadeddata', () => { if (!rafId) loop(); });
+        setTimeout(() => { if (!rafId) loop(); }, 800);   // loadeddata 누락 대비
+      }
     });
   },
 
@@ -419,6 +878,7 @@ const Mini = {
       layout();
       doneBtn.onclick = () => {
         const sa = +ov.querySelector('.sum-a').textContent, sb = +ov.querySelector('.sum-b').textContent;
+        State.set('teamFair', Math.abs(sa - sb) <= 2);   // 행동 로그
         Sound.win(); UI.hearts(6);
         msg.innerHTML = Math.abs(sa - sb) <= 2
           ? '🤖 "완벽하게 공평한 팀이에요! 제 계산보다 훨씬 따뜻한 편성입니다!"'

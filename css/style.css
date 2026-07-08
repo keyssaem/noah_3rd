@@ -11,23 +11,33 @@ kbd { background:#fff; border:2px solid #cbd5e1; border-bottom-width:4px; border
 /* ═══════════════ 화면(스크린) 공통 ═══════════════ */
 .screen { position:absolute; inset:0; z-index:50; display:flex; align-items:center; justify-content:center; }
 
-/* ─── 메인 메뉴 ─── */
-#menu-screen { background:linear-gradient(#7ec8f5 0%, #b3e0ff 55%, #9be89b 55.5%, #7ed67e 100%); overflow:hidden; }
-.menu-sky { position:absolute; inset:0; pointer-events:none; }
-.cloud { position:absolute; font-size:60px; opacity:.9; animation:cloudMove 40s linear infinite; }
-.cloud.c1 { top:8%; animation-duration:48s; }
-.cloud.c2 { top:20%; font-size:44px; animation-duration:34s; animation-delay:-15s; }
-.cloud.c3 { top:5%; font-size:80px; animation-duration:60s; animation-delay:-30s; }
-@keyframes cloudMove { from{left:-15%;} to{left:110%;} }
-.menu-inner { text-align:center; z-index:2; padding:20px; }
-.menu-sub { color:#1e5b8a; font-size:clamp(14px,2.2vw,20px); margin-bottom:8px; letter-spacing:1px; }
-.menu-title { color:#124a75; font-size:clamp(26px,5vw,52px); line-height:1.25;
-  text-shadow:3px 3px 0 rgba(255,255,255,.7); margin-bottom:6px; }
+/* ─── 메인 메뉴 (작화 배경: 교수님과 노아 3총사가 중앙 — UI는 오른쪽 배치) ─── */
+#menu-screen { background:#2a1c0e url('../media/main-bg.jpg') center/cover no-repeat;
+  overflow:hidden; justify-content:flex-end; }
+.menu-sky { display:none; }   /* 이모지 구름은 작화 배경과 충돌 → 숨김 */
+.menu-inner { text-align:center; z-index:2; padding:26px 28px; margin-right:1.5vw;
+  max-width:min(480px,48vw); background:rgba(255,251,240,.85); border-radius:26px;
+  backdrop-filter:blur(4px); box-shadow:0 12px 44px rgba(60,35,10,.3); }
+.menu-sub { color:#1e5b8a; font-size:clamp(14px,1.8vw,23px); margin-bottom:8px; letter-spacing:1px; }
+.menu-title { color:#124a75; font-size:clamp(20px,3.6vw,52px); line-height:1.25;
+  text-shadow:2px 2px 0 rgba(255,255,255,.8); margin-bottom:6px; }
 .noah-name { color:#e8590c; }
-.menu-noah { font-size:clamp(60px,10vw,110px); animation:noahBounce 1.6s ease-in-out infinite; }
-@keyframes noahBounce { 0%,100%{transform:translateY(0) rotate(-3deg);} 50%{transform:translateY(-16px) rotate(3deg);} }
+.menu-noah { display:none; }   /* 배경 그림에 노아 실물이 있어 이모지 제거 */
 .menu-buttons { display:flex; flex-direction:column; gap:14px; align-items:center; margin:18px 0; }
-.menu-std { color:#2d6a4f; font-size:clamp(11px,1.6vw,15px); opacity:.85; }
+.menu-std { color:#4a5d3a; font-size:clamp(11px,1.5vw,22px); opacity:.9; }
+@media (max-width:700px), (orientation:portrait) {   /* 세로 화면: 패널을 하단 중앙으로 */
+  #menu-screen { justify-content:center; align-items:flex-end; }
+  .menu-inner { margin:0 12px 5vh; max-width:94vw; }
+}
+
+/* ─── 🎬 컷씬 영상 오버레이 ─── */
+.cine-ov { background:#000; }
+.cine-video { max-width:100%; max-height:100%; }
+.cine-loading { position:absolute; color:#868e96; font-size:15px; pointer-events:none; }
+.cine-skip { position:absolute; right:20px; bottom:20px; background:rgba(255,255,255,.14);
+  border:2px solid rgba(255,255,255,.5); color:#fff; border-radius:999px; padding:9px 20px;
+  font-family:inherit; font-size:15px; cursor:pointer; transition:background .15s; }
+.cine-skip:hover { background:rgba(255,255,255,.3); }
 
 .big-btn { font-family:inherit; font-size:clamp(18px,2.6vw,26px); padding:14px 44px; border:none;
   border-radius:999px; background:#ff922b; color:#fff; cursor:pointer; box-shadow:0 6px 0 #d9480f;
@@ -58,6 +68,11 @@ kbd { background:#fff; border:2px solid #cbd5e1; border-bottom-width:4px; border
   border-radius:14px; width:min(280px,60vw); text-align:center; outline:none; }
 #input-name:focus { border-color:#845ef7; }
 
+/* 도덕 수첩 */
+.robot2_h { color:#e8590c; }
+.robot3_h { color:#e8590c; }
+
+
 /* ═══════════════ HUD ═══════════════ */
 #hud { position:absolute; inset:0; z-index:20; pointer-events:none; }
 #quest-banner { position:absolute; top:14px; left:50%; transform:translateX(-50%);
@@ -70,6 +85,16 @@ kbd { background:#fff; border:2px solid #cbd5e1; border-bottom-width:4px; border
   font-family:inherit; font-size:clamp(15px,2.2vw,20px); cursor:pointer; pointer-events:auto;
   transition:transform .12s; }
 #notebook-btn:hover { transform:scale(1.06); background:rgba(30,45,90,.9); }
+
+/* 🏠 처음 화면으로 (우측 상단) */
+#home-btn { position:absolute; top:14px; right:14px; background:rgba(20,30,60,.8); color:#fff;
+  border:2px solid rgba(255,255,255,.45); border-radius:999px; padding:8px 14px;
+  font-family:inherit; font-size:clamp(15px,2.2vw,20px); cursor:pointer; pointer-events:auto;
+  transition:transform .12s; }
+#home-btn:hover { transform:scale(1.06); background:rgba(30,45,90,.9); }
+
+/* 비활성 버튼 (읽기 게이트 등) */
+.choice-btn:disabled { opacity:.5; cursor:default; filter:grayscale(.4); }
 
 /* 💕/💙 관계 게이지 (3단계: 친밀도 → 5단계: 존중) */
 #bond-gauge { position:absolute; top:62px; left:14px; display:flex; align-items:center; gap:8px;
@@ -104,6 +129,12 @@ kbd { background:#fff; border:2px solid #cbd5e1; border-bottom-width:4px; border
 .spec-msg { color:#ffe066; text-align:center; margin-top:12px;
   font-size:clamp(14px,2.3vw,19px); min-height:1.6em; word-break:keep-all; }
 .stat-label small { display:block; font-size:clamp(10px,1.6vw,13px); opacity:.75; }
+
+/* 관계 저울 게임 (흰 패널 안에서 스펙트럼 재사용) */
+.ov-panel .spec-zones { color:#343a40; }
+.spec-zone.bal-btn { cursor:pointer; font-family:inherit; transition:transform .15s, box-shadow .15s; }
+.spec-zone.bal-btn:hover { transform:translateY(-3px); box-shadow:0 6px 14px rgba(0,0,0,.15); }
+.ov-panel .spec-needle { color:#343a40; text-shadow:none; }
 #interact-prompt { position:absolute; bottom:26vh; left:50%; transform:translateX(-50%);
   background:rgba(255,255,255,.95); border-radius:14px; padding:10px 22px; font-size:clamp(15px,2.4vw,21px);
   color:#212529; box-shadow:0 4px 14px rgba(0,0,0,.3); animation:promptBob 1s ease-in-out infinite; }
@@ -137,7 +168,7 @@ kbd { background:#fff; border:2px solid #cbd5e1; border-bottom-width:4px; border
 .touch-btn span { font-size:10px; opacity:.85; }
 .touch-btn.jump { width:86px; height:86px; background:rgba(230,120,30,.6); font-size:30px; }
 .touch-btn:active { filter:brightness(1.4); transform:scale(.94); }
-body:not(.touch) #touch-controls { display:none; }
+/* 조이스틱·터치 버튼은 모든 기기에서 항상 표시 (태블릿 감지 실패 대비) */
 body.touch #key-guide { display:none; }
 
 /* ═══════════════ 오버레이 공통 ═══════════════ */
@@ -167,9 +198,35 @@ textarea.ov-input { min-height:90px; resize:none; text-align:left; }
 .ox-btn:hover { transform:scale(1.08); }
 .ox-btn.picked { transform:scale(1.12); box-shadow:0 0 0 6px rgba(255,212,59,.6); }
 
+/* ═══════════ 공통 3D 연출 기반 ═══════════
+   규약: 패널 전체를 3D 회전시킬 오버레이는 UI.overlay(html,'fx3d')로 생성.
+   패널 내부의 작은 3D 요소(동전 등)는 직계 부모에 perspective를 직접 부여. */
+
+/* O/X 동전 플립 (수미상관 ①②) */
+.coin-stage { display:flex; gap:34px; justify-content:center; align-items:flex-end; margin:18px 0 6px; min-height:150px; }
+.coin-slot { display:flex; flex-direction:column; align-items:center; gap:8px; perspective:700px; }
+.coin-slot .coin-label { color:#868e96 !important; font-size:clamp(12px,1.9vw,15px) !important; }
+.coin { width:110px; height:110px; position:relative; transform-style:preserve-3d; }
+.coin.flip { animation:coinFlip 1.5s cubic-bezier(.25,.7,.3,1) forwards; }
+.coin-face { position:absolute; inset:0; border-radius:50%; display:flex; align-items:center; justify-content:center;
+  font-size:54px; border:5px solid; backface-visibility:hidden; -webkit-backface-visibility:hidden;
+  box-shadow:0 6px 18px rgba(0,0,0,.18); }
+.coin-face.back { transform:rotateY(180deg); }
+.coin-face.o { color:#2f9e44; border-color:#8ce99a; background:radial-gradient(#fff,#ebfbee); }
+.coin-face.x { color:#e03131; border-color:#ffa8a8; background:radial-gradient(#fff,#fff5f5); }
+.coin-slot.prev .coin { width:84px; height:84px; opacity:.85; }
+.coin-slot.prev .coin-face { font-size:40px; }
+@keyframes coinFlip {
+  0% { transform:rotateY(0) translateY(0) scale(.6); }
+  45% { transform:rotateY(720deg) translateY(-46px) scale(1.06); }
+  100% { transform:rotateY(1080deg) translateY(0) scale(1); }
+}
+.coin-verdict { margin-top:12px; color:#364fc7 !important; font-weight:bold;
+  animation:questPop .5s cubic-bezier(.34,1.56,.64,1); }
+
 /* 큰 글자 연출 (교수님 대사, 엔딩) */
 .bigtext-ov { background:rgba(5,5,15,.96); flex-direction:column; gap:30px; padding:30px; cursor:pointer; }
-.bigtext-line { color:#fff; font-size:clamp(22px,4.2vw,40px); text-align:center; line-height:1.6;
+.bigtext-line { color:#fff; font-size:clamp(22px,4.2vw,45px); text-align:center; line-height:1.6;
   max-width:900px; word-break:keep-all; animation:bigIn .8s ease; text-shadow:0 0 24px rgba(120,170,255,.5); }
 @keyframes bigIn { from{opacity:0; transform:scale(.92) translateY(20px);} to{opacity:1; transform:scale(1) translateY(0);} }
 .bigtext-tap { position:absolute; bottom:26px; color:rgba(255,255,255,.55); font-size:15px; animation:promptBob 1.2s infinite; }
@@ -266,12 +323,24 @@ textarea.ov-input { min-height:90px; resize:none; text-align:left; }
 .scan-log { font-family:monospace; color:#4dffa0 !important; background:#0b1220; border-radius:10px; padding:10px;
   text-align:left; font-size:clamp(12px,1.9vw,15px) !important; margin-top:10px; min-height:76px; }
 
+/* 📔 원칙 카드 → 수첩 버튼 흡수 연출 */
+.ov.absorbing { background:rgba(10,15,35,0); transition:background .7s ease; }
+.pc-absorb { animation:cardAbsorb .9s cubic-bezier(.45,-.15,.65,1) forwards; pointer-events:none; }
+@keyframes cardAbsorb {
+  0% { transform:translate(0,0) rotateY(0) scale(1); opacity:1; }
+  55% { opacity:1; }
+  100% { transform:translate(var(--tx,0px),var(--ty,0px)) rotateY(720deg) scale(.04); opacity:.25; }
+}
+#notebook-btn.nb-pulse { animation:nbPulse .7s cubic-bezier(.34,1.56,.64,1); }
+@keyframes nbPulse { 0%{transform:scale(1);} 35%{transform:scale(1.45) rotate(-6deg);}
+  70%{transform:scale(.92) rotate(3deg);} 100%{transform:scale(1);} }
+
 /* ═══════════ 📔 도덕 수첩 ═══════════ */
 .principle-card { border:6px solid #fab005; background:linear-gradient(#fffdf5,#fff4d6) !important; }
 .pc-set { display:inline-block; background:#4c6ef5; color:#fff; border-radius:999px;
   padding:6px 16px; font-size:clamp(12px,1.9vw,15px); margin-bottom:10px; }
 .pc-icon { font-size:clamp(48px,9vw,76px); line-height:1.1; animation:noahBounce 1.6s ease-in-out infinite; }
-.pc-text { background:#fff; border:3px dashed #fab005; border-radius:14px; padding:14px 16px;
+.pc-text { background:#fff; border:3px dashed #fab005; border-radius:14px; padding:14px 16px; white-space: pre-wrap;
   margin-top:10px; font-size:clamp(16px,2.5vw,21px) !important; color:#343a40 !important; }
 .pc-noah { color:#1971c2 !important; margin-top:10px; }
 .pc-saved { color:#e8590c !important; font-weight:bold; margin-top:10px;
@@ -318,6 +387,91 @@ textarea.ov-input { min-height:90px; resize:none; text-align:left; }
 /* 페이드 */
 #fade { position:absolute; inset:0; background:#000; z-index:100; opacity:0; pointer-events:none; transition:opacity .5s; }
 #fade.on { opacity:1; pointer-events:auto; }
+
+/* ═══════════ ✊✌️🖐 가위바위보 (MediaPipe) ═══════════ */
+.rps-panel { max-width:min(560px,92vw); }
+.rps-arena { display:flex; align-items:flex-start; justify-content:center; gap:16px; margin:12px 0; }
+.rps-side { display:flex; flex-direction:column; align-items:center; gap:7px; }
+.rps-name { font-size:.92rem; color:#495057; font-weight:700; }
+.rps-hand { font-size:clamp(46px,11vw,76px); width:clamp(84px,20vw,116px); height:clamp(84px,20vw,116px);
+  display:flex; align-items:center; justify-content:center; background:#f1f3f5; border-radius:18px;
+  border:3px solid #dee2e6; }
+.rps-hand.flip { animation:rpsFlip .45s ease; }
+@keyframes rpsFlip { 0%{transform:rotateY(0);} 50%{transform:rotateY(90deg);} 100%{transform:rotateY(0);} }
+.rps-cam { width:clamp(96px,22vw,136px); height:auto; aspect-ratio:4/3; object-fit:cover;
+  border-radius:10px; transform:scaleX(-1); background:#000; border:2px solid #4dabf7; }
+.rps-mid { display:flex; flex-direction:column; align-items:center; gap:5px; min-width:84px; padding-top:26px; }
+.rps-score { font-size:1.7rem; font-weight:900; color:#343a40; }
+.rps-count { font-size:1.2rem; color:#e8590c; font-weight:800; min-height:1.5em; }
+.rps-btns { display:flex; gap:14px; justify-content:center; margin:8px 0 4px; }
+.rps-btn { font-size:36px; width:clamp(64px,17vw,80px); height:clamp(64px,17vw,80px); border-radius:16px;
+  border:3px solid #dee2e6; border-bottom-width:6px; background:#fff; cursor:pointer; font-family:inherit; }
+.rps-btn:active { transform:scale(.92); border-bottom-width:3px; }
+.rps-msg { min-height:2.4em; }
+
+/* 🎬 슬로우 리플레이 */
+.rps-replay { background:#101418; border:2px solid #2b3440; color:#dbe4ee; max-width:min(520px,92vw); }
+.rps-replay h3 { color:#ffd43b; }
+.rp-rows { margin:12px 0; min-height:120px; }
+.rp-row { display:flex; gap:14px; align-items:center; padding:9px 6px; opacity:0;
+  animation:logIn .5s forwards; font-size:1.02rem; }
+.rp-t { font-family:monospace; color:#4dd0e1; min-width:88px; text-align:right; flex-shrink:0; }
+.rp-noah { margin:10px 0 4px; line-height:1.7; color:#ffe066; }
+
+/* 🤖 모델 로딩 진행바 */
+.mp-load { min-width:min(420px,86vw); }
+.mp-bar { height:14px; background:#e9ecef; border-radius:7px; overflow:hidden; margin:14px 0 8px; }
+.mp-fill { height:100%; width:0%; background:linear-gradient(90deg,#4dabf7,#9775fa); transition:width .3s; }
+.mp-status { color:#868e96; font-size:.85rem; }
+
+/* 🪟 유리 깨짐 (가짜 엔딩 → 반전) */
+.shatter-stage { position:absolute; transform-style:preserve-3d; pointer-events:none; z-index:5; }
+.shard { position:absolute; inset:0; transform-style:preserve-3d; will-change:transform,opacity; }
+.shard .ov-panel { width:100%; height:100%; max-width:none; max-height:none; overflow:hidden; box-shadow:none; }
+
+/* 🔐 7942 금고 다이얼 */
+.safe-dials { display:flex; gap:14px; justify-content:center; margin:18px 0 6px; }
+.dial { display:flex; flex-direction:column; align-items:center; gap:6px; }
+.dial-btn { width:48px; height:34px; border-radius:8px; border:2px solid #3a3a4a; background:#1c1c28;
+  color:#4dffa0; font-family:inherit; font-size:15px; cursor:pointer; transition:background .1s; }
+.dial-btn:hover { background:#26263a; }
+.dial-btn:active { background:#33334a; transform:translateY(1px); }
+.dial-window { width:56px; height:64px; perspective:420px; overflow:hidden; border-radius:10px;
+  border:3px solid #3a3a4a; background:#0a0a12; position:relative;
+  box-shadow:inset 0 10px 14px rgba(0,0,0,.85), inset 0 -10px 14px rgba(0,0,0,.85); }
+.dial-window::after { content:''; position:absolute; inset:0; pointer-events:none;
+  background:linear-gradient(rgba(0,0,0,.55), transparent 32% 68%, rgba(0,0,0,.55)); }
+.dial-window.ok { border-color:#2f9e44;
+  box-shadow:0 0 18px rgba(47,158,68,.8), inset 0 10px 14px rgba(0,0,0,.85), inset 0 -10px 14px rgba(0,0,0,.85); }
+.dial-drum { position:absolute; left:0; top:50%; width:100%; height:44px; margin-top:-22px;
+  transform-style:preserve-3d; transition:transform .35s cubic-bezier(.3,1.4,.6,1); }
+.dial-digit { position:absolute; inset:0; display:flex; align-items:center; justify-content:center;
+  font-family:monospace; font-size:30px; color:#4dffa0; background:#101018;
+  border-top:1px solid #26263a; border-bottom:1px solid #26263a;
+  backface-visibility:hidden; -webkit-backface-visibility:hidden; }
+.safe-dials.wrong { animation:dialShake .4s ease; }
+@keyframes dialShake { 0%,100%{transform:translateX(0);} 20%{transform:translateX(-10px);}
+  40%{transform:translateX(9px);} 60%{transform:translateX(-6px);} 80%{transform:translateX(4px);} }
+
+/* ═══════════ Dev Mode Panel ═══════════ */
+.dev-panel { background:#1a1a2e; border:2px solid #e94560; color:#eee;
+  max-width:540px; max-height:82vh; overflow-y:auto; gap:0; }
+.dev-header { display:flex; align-items:center; gap:10px; margin-bottom:14px; flex-wrap:wrap; }
+.dev-badge { background:#e94560; color:#fff; font-weight:900; padding:4px 12px;
+  border-radius:4px; font-size:.82rem; letter-spacing:2px; flex-shrink:0; }
+.dev-hint { color:#888; font-size:.75rem; }
+.dev-section { margin-bottom:14px; }
+.dev-sec-title { font-size:.8rem; font-weight:700; letter-spacing:1px;
+  padding:5px 10px; border-radius:6px; margin-bottom:8px; }
+.phase1-title { background:#4a0d0d; color:#ff8a80; }
+.phase2-title { background:#0d2a4a; color:#80c8ff; }
+.dev-ep-list { display:flex; flex-direction:column; gap:5px; }
+.dev-ep-btn { background:#2d2d44; border:1px solid #444; color:#eee;
+  padding:9px 13px; text-align:left; border-radius:8px; cursor:pointer;
+  font-size:.9rem; font-family:inherit; transition:background .15s, border-color .15s; }
+.dev-ep-btn:hover { background:#3d3d5e; border-color:#e94560; }
+.dev-warn { color:#f06; font-size:.75rem; margin-top:10px;
+  background:#2a0015; padding:7px 10px; border-radius:6px; line-height:1.5; }
 
 @media (max-width:700px){
   .char-cards { gap:10px; }
