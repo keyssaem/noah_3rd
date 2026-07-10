@@ -24,7 +24,8 @@ kbd { background:#fff; border:2px solid #cbd5e1; border-bottom-width:4px; border
 .noah-name { color:#e8590c; }
 .menu-noah { display:none; }   /* 배경 그림에 노아 실물이 있어 이모지 제거 */
 .menu-buttons { display:flex; flex-direction:column; gap:14px; align-items:center; margin:18px 0; }
-.menu-std { color:#4a5d3a; font-size:clamp(11px,1.5vw,22px); opacity:.9; }
+.menu-std { color:#4a5d3a; font-size:clamp(11px,1.5vw,22px); margin-bottom:6px; opacity:.9; }
+.menu-plus { color:#124a75; font-size:clamp(8px,1.5vw,15px); opacity:.9; }
 @media (max-width:700px), (orientation:portrait) {   /* 세로 화면: 패널을 하단 중앙으로 */
   #menu-screen { justify-content:center; align-items:flex-end; }
   .menu-inner { margin:0 12px 5vh; max-width:94vw; }
@@ -452,6 +453,69 @@ textarea.ov-input { min-height:90px; resize:none; text-align:left; }
 .safe-dials.wrong { animation:dialShake .4s ease; }
 @keyframes dialShake { 0%,100%{transform:translateX(0);} 20%{transform:translateX(-10px);}
   40%{transform:translateX(9px);} 60%{transform:translateX(-6px);} 80%{transform:translateX(4px);} }
+
+/* ═══════════ 🎈 노아의 기억 풍선 (MediaPipe Hand · AR 전체 화면) ═══════════ */
+.blg-ov { background:#06080d; }
+.blg-stage { position:relative; width:min(96vw, calc(92vh * 4 / 3)); aspect-ratio:4/3;
+  border-radius:16px; overflow:hidden; background:#5f6f7d; }
+.blg-stage.nocam { background:linear-gradient(#43596b, #31465a); }
+.blg-cam { position:absolute; inset:0; width:100%; height:100%; object-fit:cover; transform:scaleX(-1); }
+.blg-hud { position:absolute; top:10px; left:10px; right:10px; display:flex;
+  justify-content:space-between; align-items:center; z-index:5; pointer-events:none; }
+.blg-chip { background:rgba(10,14,22,.72); color:#fff; border-radius:10px; padding:6px 13px;
+  font-size:clamp(12px,2vw,16px); }
+.blg-stars { color:#ffd43b; }
+.blg-msg { position:absolute; top:52px; left:50%; transform:translateX(-50%); z-index:5;
+  background:rgba(10,14,22,.66); color:#fff; border-radius:10px; padding:5px 14px;
+  font-size:clamp(12px,1.9vw,15px); pointer-events:none; white-space:nowrap;
+  max-width:92%; overflow:hidden; text-overflow:ellipsis; }
+.blg-msg:empty { display:none; }
+.blg-balloon { position:absolute; transform:translate(-50%,-50%); background:rgba(255,255,255,.95);
+  border:3px solid #ffd43b; border-radius:999px; padding:9px 18px;
+  font-size:clamp(12px,2.1vw,16px); color:#5B4636; cursor:pointer; z-index:6;
+  white-space:nowrap; user-select:none; animation:blgBob 2.6s ease-in-out infinite; }
+.blg-balloon.set-robot  { border-color:#ffd43b; }   /* 🤖 로봇 3원칙 = 노랑 */
+.blg-balloon.set-ethics { border-color:#ff922b; }   /* 🧭 AI 윤리 3대 원칙 = 주황 */
+.blg-balloon.set-user   { border-color:#4dabf7; }   /* 📱 사용자 윤리 원칙 = 파랑 */
+@keyframes blgBob { 0%,100%{ margin-top:0; } 50%{ margin-top:-12px; } }
+.blg-balloon.held { animation:none; z-index:9; box-shadow:0 0 20px rgba(250,176,5,.9);
+  transform:translate(-50%,-50%) scale(1.12); }
+.blg-balloon.fly { animation:none; transition:left .38s ease, top .38s ease, opacity .42s, transform .38s;
+  opacity:0; transform:translate(-50%,-50%) scale(.25); pointer-events:none; }
+.blg-balloon.pop { animation:blgPop .4s forwards; pointer-events:none; }
+@keyframes blgPop { 40%{ transform:translate(-50%,-50%) scale(1.28); }
+  100%{ transform:translate(-50%,-50%) scale(0); opacity:0; } }
+.blg-gauge { position:absolute; left:8%; bottom:3px; height:4px; width:0;
+  background:#69db7c; border-radius:2px; pointer-events:none; }
+.blg-q { position:absolute; left:4%; right:4%; bottom:74px; background:rgba(10,14,22,.78);
+  color:#fff; border-radius:12px; padding:10px 16px; text-align:center;
+  font-size:clamp(13px,2.3vw,19px); z-index:5; word-break:keep-all; line-height:1.5; }
+.blg-hl { color:#ffd43b; }
+.blg-slot { position:absolute; left:50%; bottom:12px; transform:translateX(-50%);
+  background:rgba(255,251,240,.93); border:3px dashed #e8590c; border-radius:14px;
+  padding:8px 26px; font-size:clamp(13px,2.2vw,17px); color:#5B4636; z-index:5; white-space:nowrap; }
+.blg-slot.flash { background:#d3f9d8; border-color:#40c057; border-style:solid; }
+.blg-cursor { position:absolute; left:-100px; top:-100px; z-index:10; font-size:clamp(28px,5vw,38px);
+  transform:translate(-50%,-50%); pointer-events:none; display:none;
+  filter:drop-shadow(0 0 7px rgba(250,176,5,.9)); }
+.blg-cursor.on { display:block; }
+
+/* ═══════════ 🎭 GLB 뷰어 (Dev) ═══════════ */
+.glbv-panel { background:#151521; border:2px solid #69f0ae; color:#eee; max-width:min(560px,96vw); }
+.glbv-title { color:#69f0ae; display:flex; align-items:center; gap:10px; flex-wrap:wrap; }
+.glbv-info { font-size:.8rem; color:#aaa; font-weight:400; }
+.glbv-models { display:flex; flex-wrap:wrap; gap:6px; margin:10px 0; }
+.glbv-mbtn { background:#23233a; border:1px solid #444; color:#ddd; border-radius:8px;
+  padding:6px 11px; font-family:inherit; font-size:.85rem; cursor:pointer; }
+.glbv-mbtn:hover { background:#2e2e4a; } .glbv-mbtn.on { background:#0d3a2a; border-color:#69f0ae; color:#69f0ae; }
+.glbv-canvas { width:100%; max-width:480px; aspect-ratio:4/3; display:block; margin:6px auto;
+  background:linear-gradient(#2a3f5a,#1a2535); border-radius:12px; touch-action:none; cursor:grab; }
+.glbv-clips { display:flex; flex-wrap:wrap; gap:6px; justify-content:center; min-height:34px; margin-top:8px; }
+.glbv-cbtn { background:#23233a; border:1px solid #555; color:#ddd; border-radius:8px;
+  padding:6px 12px; font-family:inherit; font-size:.88rem; cursor:pointer; }
+.glbv-cbtn:hover { background:#2e2e4a; } .glbv-cbtn.on { background:#0d3a2a; border-color:#69f0ae; color:#69f0ae; }
+.glbv-cbtn.stop { border-color:#e94560; color:#ff8fa3; }
+.glbv-hint { color:#888; font-size:.82rem; }
 
 /* ═══════════ Dev Mode Panel ═══════════ */
 .dev-panel { background:#1a1a2e; border:2px solid #e94560; color:#eee;

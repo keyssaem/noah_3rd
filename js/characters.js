@@ -73,8 +73,16 @@ const Chars = {
     };
   },
 
-  /* 프리셋 */
+  /* 프리셋 — 주인공: GLB(대기·걷기·앉기·놀라기) 우선, 실패 시 박스 폴백 */
+  PLAYER_WALK_TS: 1.8,   // 걷기 클립 배속 (이동 속도와 발맞춤 — 눈으로 튜닝)
   player(gender) {
+    const name = gender === 'f' ? 'playerF' : 'playerM';
+    if (typeof Assets !== 'undefined' && Assets.isLoaded(name)) {
+      const ch = this.glbChar(name, {
+        height: 1.65, clips: this.CLIPS[name], walkTimeScale: this.PLAYER_WALK_TS,
+      });
+      if (ch) return ch;
+    }
     return gender === 'f'
       ? this.person({ girl: true, hair: 0x5d4037, shirt: 0xff8fab, pants: 0xd6336c })
       : this.person({ hair: 0x212121, shirt: 0x4dabf7, pants: 0x37474f });
@@ -88,8 +96,91 @@ const Chars = {
     return this.person({ girl: i % 2 === 1, hair: [0x212121, 0x4e342e, 0x5d4037][i % 3], shirt: shirts[i % 6], pants: 0x455a64, scale: 0.95 });
   },
 
-  /* ───── 노아 (human / animal / car) ───── */
+  /* ───── GLB 캐릭터 래퍼 (박스 캐릭터와 동일한 인터페이스 { group, update }) ─────
+     Assets에 프리로드된 gltf를 복제해 AnimationMixer로 클립 재생.
+     clips: {idle,wave,...} → 클립 인덱스 매핑 (NlaTrack 이름이 무의미하므로 인덱스로 지정) */
+  glbChar(instName, opts = {}) {
+    const inst = (typeof Assets !== 'undefined') ? Assets.instance(instName) : null;
+    if (!inst) return null;                       // 미로드/미지원 → 호출측이 박스로 폴백
+    const group = new THREE.Group();
+    // 🧭 정면 보정: Tripo 모델은 정면이 +X 등으로 틀어져 있음 → 게임 기준(+Z)으로 자동 정렬
+    inst.scene.rotation.y += (opts.faceY != null ? opts.faceY : 0) - Assets.frontOffset(inst.scene);
+    Assets.normalize(inst.scene, opts.height || 1.7);
+    group.add(inst.scene);
+    group.traverse(o => { if (o.isMesh) { o.castShadow = true; o.frustumCulled = false; } });
+
+    const mixer = inst.animations.length ? new THREE.AnimationMixer(inst.scene) : null;
+    const actions = (inst.animations || []).map(c => mixer.clipAction(c));
+    const clips = opts.clips || {};
+    const api = {
+      group, mixer, actions, clips, _cur: -1, isGLB: true, design: opts.design,
+      /* 클립 재생 — key(문자열) 또는 인덱스, 크로스페이드 */
+      play(key, fade = 0.3) {
+        if (!mixer) return;
+        const i = (typeof key === 'string') ? (clips[key] ?? -1) : key;
+        if (i < 0 || !actions[i] || this._cur === i) return;
+        actions[i].reset().setLoop(THREE.LoopRepeat, Infinity).fadeIn(fade).play();
+        if (this._cur >= 0 && actions[this._cur]) actions[this._cur].fadeOut(fade);
+        this._cur = i;
+      },
+      /* moving 플래그로 대기↔걷기 가중치 블렌딩 (재시작 없이 두 클립을 동시 재생, 가중치만 교차
+         — play(reset) 방식은 탭 연타 때마다 걷기가 0프레임부터 다시 시작돼 부자연스러움) */
+      update(dt, moving) {
+        if (this._loco) {
+          const t = moving ? 1 : 0;
+          this._locoW += (t - this._locoW) * Math.min(1, dt * 9);
+          if (Math.abs(t - this._locoW) < 0.02) this._locoW = t;
+          actions[clips.walk].setEffectiveWeight(this._locoW);
+          actions[clips.idle].setEffectiveWeight(1 - this._locoW);
+          this._cur = this._locoW > 0.5 ? clips.walk : clips.idle;
+        }
+        if (mixer) mixer.update(dt);
+      },
+    };
+    api._loco = clips.walk != null && clips.idle != null;   // 이동 블렌딩 활성 조건
+    if (clips.walk != null && actions[clips.walk])
+      actions[clips.walk].setEffectiveTimeScale(opts.walkTimeScale || 1);   // 발걸음-이동속도 싱크
+    if (api._loco) {
+      api._locoW = 0;
+      actions[clips.idle].setEffectiveWeight(1).play();
+      actions[clips.walk].setEffectiveWeight(0).play();
+      api._cur = clips.idle;
+    } else {
+      const defIdle = clips.idle != null ? clips.idle : (clips.look != null ? clips.look : 0);
+      if (actions.length) api.play(defIdle, 0);   // 기본 대기 클립
+    }
+    return api;
+  },
+
+  /* GLB 클립 매핑 (2026-07-09 뷰어로 식별 확정) — 모델명 → { 의미키: 클립인덱스 }
+     주인공 남/여는 공통 동작만 살림(대기·앉기·걷기·놀라기). 노아 동물은 [0] 미사용. */
+  CLIP_LABELS: { idle:'대기', sit:'앉기', walk:'걷기', surprise:'놀라기',
+    greet:'꾸벅 인사', admit:'인정하기', scared:'두려워하기', look:'둘러보기' },
+  CLIPS: {
+    playerM:   { idle: 0, sit: 1, walk: 3, surprise: 4 },   // [2]둘러보기는 여자와 통일 위해 제외
+    playerF:   { idle: 0, sit: 1, walk: 2, surprise: 4 },   // [3]인정하기는 제외
+    teacher:   { look: 0 },
+    friendM:   { look: 0 },
+    friendF:   { look: 0 },
+    noahHuman: { idle: 0, greet: 1, admit: 2, scared: 3 },
+    noahAnimal:{ idle: 1, greet: 2, scared: 3 },            // [0] 미사용
+    noahCar:   {},                                          // 정적
+  },
+
+  /* ───── 노아 (human / animal / car) — GLB 우선, 실패 시 박스 폴백 ───── */
   noah(design) {
+    const glbName = { human: 'noahHuman', animal: 'noahAnimal', car: 'noahCar' }[design] || 'noahHuman';
+    if (typeof Assets !== 'undefined' && Assets.isLoaded(glbName)) {
+      const ch = this.glbChar(glbName, {
+        height: design === 'car' ? 1.2 : 1.7,
+        design, clips: this.CLIPS[glbName] || {},
+      });
+      if (ch) return ch;                          // GLB 성공
+    }
+    return this._noahBox(design);                 // 폴백: 기존 박스 노아
+  },
+
+  _noahBox(design) {
     const g = new THREE.Group();
     const M = c => this.mat(c);
     const silver = 0xb0bec5, dark = 0x546e7a, glow = 0x4dd0e1;

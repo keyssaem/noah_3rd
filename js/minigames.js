@@ -448,152 +448,209 @@ const Mini = {
     });
   },
 
-  /* ═══════ ✋ 핀치 분류 피날레 — 수첩 9원칙 총정리 (MediaPipe 손 + 클릭 폴백) ═══════
-     엄지+검지로 카드를 집어 3개의 바구니(로봇/윤리/사용자)에 담는다.
-     카메라가 없거나 인식 실패 시: 카드 클릭 → 바구니 클릭 (dataSort 패턴) */
-  async pinchSort() {
-    const BINS = [
-      { key: 'robot',  icon: '🤖', label: '로봇이 지킬 약속' },
-      { key: 'ethics', icon: '🧭', label: '만드는 사람·사회의 약속' },
-      { key: 'user',   icon: '📱', label: '사용하는 나의 약속' },
-    ];
-    const cards = [...DATA.moralItems].sort(() => Math.random() - 0.5);
-    const setOf = id => DATA.moralItems.find(m => m.id === id).set;
-
-    // ── Phase 0 게이트: 카메라 안내 → 수락/거절 → 손 인식기 로드 ──
+  /* ═══════ 🎈 노아의 기억 풍선 — 9원칙 제목↔뜻 짝맞추기 (MediaPipe 손 + 탭 폴백) ═══════
+     AR 구조: 전체 화면 = 거울 모드 카메라. 하단 문제 바에 <뜻>이 표시되고,
+     <약속 이름> 풍선(세트별 테두리색)이 화면 위를 떠다닌다.
+     잡기: 핀치 또는 풍선 위 1.5초 호버 / 놓기: 수첩 슬롯에서 핀치 해제 또는 0.8초 유지.
+     오답 풍선은 잡는 순간 펑! 카메라가 없으면 같은 게임을 탭으로 진행.
+     첫 시도 정답 = ⭐ → State.balloonStars (0~9) */
+  async balloonGame() {
+    // 게이트: 카메라 안내 → 수락/거절 → 손 인식기 로드
     let stream = await MP.camGate();
     let rec = null;
     if (stream) {
       rec = await MP.ensureHands();
       if (!rec) { MP.stopCam(stream); stream = null; }
     }
-    let camMode = !!(stream && rec);
+    const camMode = !!(stream && rec);
+    const rounds = [...DATA.moralItems].sort(() => Math.random() - 0.5);
 
     return new Promise(resolve => {
       const ov = UI.overlay(`
-        <div class="ov-panel pinch-panel">
-          <h3 class="mini-title">✋ 도덕 수첩 완성하기! — 9가지 약속 정리</h3>
-          <p class="ov-sub pinch-sub">${camMode
-            ? '엄지와 검지로 카드를 <b>콕 집어</b> 알맞은 바구니에 담아요!'
-            : '카드를 누른 다음, 알맞은 바구니를 눌러 담아요!'}</p>
-          <div class="pinch-stage">
-            <div class="pinch-pool">${cards.map(c =>
-              `<span class="pinch-card" data-id="${c.id}"><span class="pc-ic">${c.icon}</span>${c.title}</span>`).join('')}</div>
-            <div class="pinch-bins">${BINS.map(b =>
-              `<div class="pinch-bin" data-set="${b.key}"><div class="pb-head">${b.icon} ${b.label}</div><div class="pb-items"></div></div>`).join('')}</div>
+        <div class="blg-stage${camMode ? '' : ' nocam'}">
+          ${camMode ? '<video class="blg-cam" autoplay playsinline muted></video>' : ''}
+          <div class="blg-hud">
+            <span class="blg-chip blg-progress">📔 0/9</span>
+            <span class="blg-chip">🎈 노아의 기억 풍선</span>
+            <span class="blg-chip blg-stars">⭐ 0</span>
           </div>
-          <p class="ov-sub pinch-msg">&nbsp;</p>
-          ${camMode ? '<video class="pinch-cam" autoplay playsinline muted></video><div class="pinch-cursor">✦</div>' : ''}
-        </div>`);
+          <div class="blg-msg"></div>
+          <div class="blg-balloons"></div>
+          <div class="blg-q"></div>
+          <div class="blg-slot">📔 여기로 끌어다 놓기!</div>
+          <div class="blg-cursor">🖐️</div>
+        </div>`, 'blg-ov');
+      const stage = ov.querySelector('.blg-stage'),
+            balloonsBox = ov.querySelector('.blg-balloons'),
+            qEl = ov.querySelector('.blg-q'),
+            slot = ov.querySelector('.blg-slot'),
+            msgEl = ov.querySelector('.blg-msg'),
+            cursor = ov.querySelector('.blg-cursor'),
+            progressEl = ov.querySelector('.blg-progress'),
+            starsEl = ov.querySelector('.blg-stars');
 
-      const msg = ov.querySelector('.pinch-msg');
-      let placed = 0;
-      const total = cards.length;
+      const esc = s => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+      const fmt = s => esc(s).replace(/\*\*(.+?)\*\*/g, '<b class="blg-hl">$1</b>');
+      const showMsg = t => { msgEl.innerHTML = t; };
 
-      /* ── 공통: 카드를 바구니에 놓기 시도 (정답이면 담고, 아니면 되돌림) ── */
-      const place = (cardEl, binKey) => {
-        if (!cardEl || cardEl.classList.contains('done')) return;
-        const bin = ov.querySelector(`.pinch-bin[data-set="${binKey}"]`);
-        if (setOf(cardEl.dataset.id) === binKey) {
-          Sound.coin();
-          cardEl.classList.add('done');
-          cardEl.classList.remove('picked', 'grabbed');
-          cardEl.style.cssText = '';
-          bin.querySelector('.pb-items').appendChild(cardEl);
-          bin.classList.add('flash'); setTimeout(() => bin.classList.remove('flash'), 400);
-          placed++;
-          msg.innerHTML = '🤖 "맞았어요! 딱 알맞은 바구니예요."';
-          if (placed >= total) finish();
-        } else {
-          Sound.error();
-          cardEl.classList.remove('picked', 'grabbed');
-          cardEl.style.cssText = '';
-          ov.querySelector('.pinch-pool').appendChild(cardEl);
-          cardEl.classList.add('shake'); setTimeout(() => cardEl.classList.remove('shake'), 450);
-          msg.innerHTML = '🤖 "음... 이 약속은 <b>누가</b> 지키는 약속이었죠? 다시 생각해 볼까요?"';
-        }
-      };
+      let round = 0, stars = 0, firstTry = true, current = null, holding = null, rafId = null;
 
-      let rafId = null;
       const finish = () => {
-        msg.innerHTML = '🎉 <b>도덕 수첩 완성!</b> 9가지 약속을 모두 담았어요!';
+        State.set('balloonStars', stars);   // 첫 시도 정답 수 (헌장 뱃지 연계용)
+        balloonsBox.innerHTML = '';         // 남은 오답 풍선 정리
         Sound.win(); UI.hearts(8);
-        State.set('pinchComplete', true);
+        qEl.innerHTML = `🎉 <b>기억 완성!</b> 흩어졌던 9가지 약속이 모두 돌아왔어요! (첫 시도 정답 ⭐×${stars})`;
+        showMsg('');
         if (rafId) cancelAnimationFrame(rafId);
         MP.stopCam(stream);
-        setTimeout(() => { UI.close(ov); resolve(); }, 2400);
+        setTimeout(() => { UI.close(ov); resolve(stars); }, 2800);
       };
 
-      /* ── 폴백(클릭) 모드: 카드 클릭 → 바구니 클릭 ── */
-      let picked = null;
-      ov.querySelectorAll('.pinch-card').forEach(el => {
-        el.onclick = () => {
-          if (el.classList.contains('done')) return;
-          ov.querySelectorAll('.pinch-card').forEach(x => x.classList.remove('picked'));
-          el.classList.add('picked'); picked = el; Sound.pop();
-        };
-      });
-      ov.querySelectorAll('.pinch-bin').forEach(bin => {
-        bin.onclick = () => {
-          if (!picked) { msg.textContent = '먼저 위에서 약속 카드를 골라 주세요!'; return; }
-          const p = picked; picked = null;
-          place(p, bin.dataset.set);
-        };
-      });
+      const flyToSlot = b => {              // 정답 풍선 → 수첩 슬롯으로 빨려 들어감
+        holding = null;
+        const sr = stage.getBoundingClientRect(), tr = slot.getBoundingClientRect();
+        b.classList.remove('held');
+        b.classList.add('fly');
+        b.style.left = ((tr.left + tr.width / 2 - sr.left) / sr.width * 100) + '%';
+        b.style.top = ((tr.top + tr.height / 2 - sr.top) / sr.height * 100) + '%';
+        slot.classList.add('flash');
+        Sound.coin();
+        if (firstTry) { stars++; starsEl.textContent = '⭐ ' + stars; UI.hearts(3); }
+        round++;
+        progressEl.textContent = `📔 ${round}/9`;
+        showMsg('🤖 "맞아요! 기억이 하나 돌아왔어요!"');
+        setTimeout(() => { slot.classList.remove('flash'); b.remove(); }, 430);
+        setTimeout(startRound, 800);
+      };
 
-      /* ── 카메라(핀치) 모드: 손 커서 + 집기/놓기 ── */
+      const returnHome = b => {             // 슬롯 밖에서 놓침 → 제자리로
+        b.classList.remove('held');
+        b.style.left = b.dataset.ax + '%';
+        b.style.top = b.dataset.ay + '%';
+      };
+
+      /* 잡기 판정 — 정답: 손에 붙음(카메라)/즉시 수첩으로(탭) · 오답: 그 자리에서 펑! */
+      const judgeGrab = (b, autoFly) => {
+        if (!b || b.classList.contains('pop') || b.classList.contains('fly')) return null;
+        if (b.dataset.id !== current.id) {
+          firstTry = false;
+          Sound.error();
+          b.classList.add('pop');
+          setTimeout(() => b.remove(), 420);
+          showMsg('🤖 "펑! 그 이름이 아니에요. 아래 뜻을 다시 읽어 볼까요?"');
+          return null;
+        }
+        if (autoFly) { flyToSlot(b); return null; }
+        Sound.pop();
+        b.classList.add('held');
+        showMsg('');
+        return b;
+      };
+
+      const startRound = () => {
+        if (round >= rounds.length) return finish();
+        current = rounds[round];
+        firstTry = true;
+        progressEl.textContent = `📔 ${round}/9`;
+        qEl.innerHTML = `Q. "${fmt(current.q || current.text)}" — 이 약속의 이름은?`;
+        const nWrong = round < 3 ? 1 : 2;   // 1~3라운드는 2지선다로 적응
+        const wrongs = DATA.moralItems.filter(m => m.id !== current.id)
+          .sort(() => Math.random() - 0.5).slice(0, nWrong);
+        const opts = [current, ...wrongs].sort(() => Math.random() - 0.5);
+        const anchors = opts.length === 2 ? [[24, 20], [76, 14]] : [[17, 22], [50, 11], [83, 22]];
+        balloonsBox.innerHTML = '';
+        opts.forEach((m, i) => {
+          const b = document.createElement('div');
+          b.className = 'blg-balloon set-' + m.set;   // 🤖노랑 / 🧭주황 / 📱파랑 테두리
+          b.dataset.id = m.id;
+          b.dataset.ax = anchors[i][0]; b.dataset.ay = anchors[i][1];
+          b.style.left = anchors[i][0] + '%';
+          b.style.top = anchors[i][1] + '%';
+          b.style.animationDelay = (i * 0.45) + 's';
+          b.innerHTML = `${m.icon} ${m.title}<span class="blg-gauge"></span>`;
+          b.onclick = () => { if (!holding) judgeGrab(b, true); };   // 탭 폴백 (양 모드 공통)
+          balloonsBox.appendChild(b);
+        });
+      };
+
+      /* ── 카메라 모드: 손 커서 + 핀치/호버 잡기 + 슬롯 드롭 ── */
       if (camMode) {
-        const video = ov.querySelector('.pinch-cam');
-        const cursor = ov.querySelector('.pinch-cursor');
+        const video = ov.querySelector('.blg-cam');
         video.srcObject = stream;
-        let holding = null, wasPinching = false, grabCooldown = 0;
-
-        const hitTest = (sel, x, y) => {
-          for (const el of ov.querySelectorAll(sel)) {
-            if (el.classList.contains('done')) continue;
-            const r = el.getBoundingClientRect();
-            if (x >= r.left && x <= r.right && y >= r.top && y <= r.bottom) return el;
-          }
+        const inRect = (el, x, y) => {
+          const r = el.getBoundingClientRect();
+          return x >= r.left && x <= r.right && y >= r.top && y <= r.bottom;
+        };
+        const balloonAt = (x, y) => {
+          for (const el of balloonsBox.querySelectorAll('.blg-balloon:not(.pop):not(.fly)'))
+            if (inRect(el, x, y)) return el;
           return null;
         };
+        const gauge = (b, t) => {
+          const g = b && b.querySelector('.blg-gauge');
+          if (g) g.style.width = (t * 84) + '%';
+        };
+        let wasPinch = false, cool = 0, lastSeen = 0, hoverEl = null, hoverT0 = 0, slotT0 = 0;
 
         const loop = () => {
           rafId = requestAnimationFrame(loop);
           if (video.readyState < 2) return;
-          let res;
-          try { res = rec.recognizeForVideo ? null : null; } catch (e) {}
           let info = null;
           try { info = MP.pinchFromResult(rec.detectForVideo(video, performance.now())); } catch (e) { return; }
-          if (!info) { cursor.classList.remove('on'); wasPinching = false; return; }
+          const now = performance.now();
+          if (!info) {
+            cursor.classList.remove('on');
+            if (hoverEl) { gauge(hoverEl, 0); hoverEl = null; }
+            if (holding && now - lastSeen > 1000) { returnHome(holding); holding = null; }   // 손 소실 1초 → 제자리
+            return;
+          }
+          lastSeen = now;
+          const sr = stage.getBoundingClientRect();
+          const px = (1 - info.x) * 100, py = info.y * 100;                // 거울 반전 % 좌표
+          const cx = sr.left + (1 - info.x) * sr.width, cy = sr.top + info.y * sr.height;
           cursor.classList.add('on');
-          const cx = (1 - info.x) * window.innerWidth;    // 거울 반전
-          const cy = info.y * window.innerHeight;
-          cursor.style.left = cx + 'px';
-          cursor.style.top = cy + 'px';
-          cursor.classList.toggle('pinch', info.pinching);
-          if (grabCooldown > 0) grabCooldown--;
+          cursor.style.left = px + '%'; cursor.style.top = py + '%';
+          cursor.textContent = info.pinching ? '🤏' : '🖐️';
+          if (cool > 0) cool--;
 
-          if (info.pinching && !holding && grabCooldown === 0) {
-            const card = hitTest('.pinch-card', cx, cy);
-            if (card) {
-              holding = card; card.classList.add('grabbed'); Sound.pop();
-            }
+          if (!holding) {
+            const over = balloonAt(cx, cy);
+            if (info.pinching && !wasPinch && cool === 0 && over) {        // ① 핀치로 잡기
+              if (hoverEl) { gauge(hoverEl, 0); hoverEl = null; }
+              holding = judgeGrab(over, false);
+              if (!holding) cool = 12;
+            } else if (!info.pinching && over) {                           // ② 1.5초 호버로 잡기
+              if (hoverEl !== over) { if (hoverEl) gauge(hoverEl, 0); hoverEl = over; hoverT0 = now; }
+              const t = Math.min(1, (now - hoverT0) / 1500);
+              gauge(over, t);
+              if (t >= 1) {
+                gauge(over, 0); hoverEl = null;
+                holding = judgeGrab(over, false);
+                if (!holding) cool = 12;
+              }
+            } else if (hoverEl) { gauge(hoverEl, 0); hoverEl = null; }
+          } else {
+            holding.style.left = px + '%';                                 // 풍선이 손을 따라옴
+            holding.style.top = py + '%';
+            const overSlot = inRect(slot, cx, cy);
+            if (wasPinch && !info.pinching) {                              // 놓기 ①: 핀치 해제
+              const h = holding; holding = null; cool = 10;
+              if (overSlot) flyToSlot(h); else returnHome(h);
+            } else if (overSlot) {                                         // 놓기 ②: 슬롯 위 0.8초 유지
+              if (!slotT0) slotT0 = now;
+              if (now - slotT0 > 800) { const h = holding; holding = null; slotT0 = 0; cool = 10; flyToSlot(h); }
+            } else slotT0 = 0;
           }
-          if (holding) {
-            holding.style.left = cx + 'px';
-            holding.style.top = cy + 'px';
-          }
-          if (!info.pinching && wasPinching && holding) {
-            const bin = hitTest('.pinch-bin', cx, cy);
-            const h = holding; holding = null; grabCooldown = 8;
-            if (bin) place(h, bin.dataset.set);
-            else { h.classList.remove('grabbed'); h.style.cssText = ''; ov.querySelector('.pinch-pool').appendChild(h); }
-          }
-          wasPinching = info.pinching;
+          wasPinch = info.pinching;
         };
         video.addEventListener('loadeddata', () => { if (!rafId) loop(); });
         setTimeout(() => { if (!rafId) loop(); }, 800);   // loadeddata 누락 대비
       }
+
+      startRound();
+      showMsg(camMode
+        ? '🖐️ 카메라에 손을 보여 주세요! 정답 풍선을 🤏 집어서 수첩까지~'
+        : '🎈 풍선을 <b>콕 눌러서</b> 정답을 골라 보세요!');
     });
   },
 

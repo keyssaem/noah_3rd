@@ -3,7 +3,7 @@ const Player = {
   char: null, pos: new THREE.Vector3(), vy: 0, onGround: true,
   yaw: 0, enabled: false, keys: {},
   camTarget: new THREE.Vector3(), nearZone: null,
-  SPEED: 6, JUMP: 8.2, GRAVITY: 22,
+  SPEED: 7, JUMP: 8.2, GRAVITY: 22,
 
   init() {
     window.addEventListener('keydown', e => {
@@ -147,27 +147,53 @@ const Player = {
     }
     if (!this.enabled && this.nearZone) { this.nearZone = null; UI.setPrompt(null); }
 
-    // 캐릭터 반영
+    // 캐릭터 반영 — 정지 상태에서 출발할 땐 즉시 방향 전환(피벗 잔동작 제거),
+    // 이동 중 방향 전환은 빠른 회전(초당 18)으로 짧게
     this.char.group.position.copy(this.pos);
-    const targetYaw = this.yaw;
-    let dy = targetYaw - this.char.group.rotation.y;
+    let dy = this.yaw - this.char.group.rotation.y;
     while (dy > Math.PI) dy -= Math.PI * 2;
     while (dy < -Math.PI) dy += Math.PI * 2;
-    this.char.group.rotation.y += dy * Math.min(1, dt * 12);
+    if (moving && !this._wasMoving) this.char.group.rotation.y = this.yaw;
+    else this.char.group.rotation.y += dy * Math.min(1, dt * 18);
+    this._wasMoving = moving;
     this.char.update(dt, moving);
 
-    // 3인칭 카메라 (부드럽게 따라오기)
-    const camDist = World.current === 'worldmap' ? 11 : 8;
-    const camH = World.current === 'worldmap' ? 7 : 5.5;
-    this.camTarget.set(this.pos.x, this.pos.y + camH, this.pos.z + camDist);
-    World.camera.position.lerp(this.camTarget, Math.min(1, dt * 4));
-    World.camera.lookAt(this.pos.x, this.pos.y + 1.2, this.pos.z);
+    // 카메라 — 포커스 락(연출)이 있으면 대상에 밀어 넣고, 없으면 3인칭 추적
+    if (this.camLock) {
+      World.camera.position.lerp(this.camLock.pos, Math.min(1, dt * this.camLock.speed));
+      this._lookAt.lerp(this.camLock.look, Math.min(1, dt * this.camLock.speed));
+      World.camera.lookAt(this._lookAt);
+    } else {
+      const camDist = World.current === 'worldmap' ? 11 : 8;
+      const camH = World.current === 'worldmap' ? 7 : 5.5;
+      this.camTarget.set(this.pos.x, this.pos.y + camH, this.pos.z + camDist);
+      World.camera.position.lerp(this.camTarget, Math.min(1, dt * 4));
+      this._lookAt.set(this.pos.x, this.pos.y + 1.2, this.pos.z);
+      World.camera.lookAt(this._lookAt);
+    }
   },
 
   snapCamera() {
+    this.camLock = null;                     // 하드 리셋 시 연출 포커스 해제 (전환 누수 방지)
     const camDist = World.current === 'worldmap' ? 11 : 8;
     const camH = World.current === 'worldmap' ? 7 : 5.5;
     World.camera.position.set(this.pos.x, this.pos.y + camH, this.pos.z + camDist);
-    World.camera.lookAt(this.pos.x, this.pos.y + 1.2, this.pos.z);
+    this._lookAt.set(this.pos.x, this.pos.y + 1.2, this.pos.z);
+    World.camera.lookAt(this._lookAt);
   },
+
+  /* 🎥 연출용 카메라 포커스 — 대상(그룹)을 정면 가까이서 크게 잡기 */
+  _lookAt: new THREE.Vector3(),
+  focusOn(target, opts = {}) {
+    const p = target.position, yaw = target.rotation.y;
+    const dist = opts.dist != null ? opts.dist : 3.2;
+    const h = opts.height != null ? opts.height : 1.5;
+    const lookH = opts.lookH != null ? opts.lookH : 1.25;
+    this.camLock = {
+      pos: new THREE.Vector3(p.x + Math.sin(yaw) * dist, p.y + h, p.z + Math.cos(yaw) * dist),
+      look: new THREE.Vector3(p.x, p.y + lookH, p.z),
+      speed: opts.snap ? 100 : 3,
+    };
+  },
+  clearFocus() { this.camLock = null; },
 };

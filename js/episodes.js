@@ -199,6 +199,26 @@ const Flow = {
     }
   },
 
+  /* 🎥 노아 연출 순간 — 클립 재생 + 카메라를 노아에게 밀어넣어 크게 잡기
+     GLB 노아면 해당 클립, 박스 노아면 클립은 무시하고 카메라 포커스만 (양쪽 안전) */
+  noahMoment(clipKey, opts = {}) {
+    const noah = this.noah;
+    if (!noah) return;
+    if (noah.play && clipKey) noah.play(clipKey, 0.25);
+    // noah.group 안의 첫 번째 자식(실제 로봇 모델)만 90도 회전
+if (noah.group.children.length > 0) {
+    // 상황에 따라 Math.PI / 2 또는 -Math.PI / 2를 적용해 보세요.
+    noah.group.children[0].rotation.y = -Math.PI / 2; 
+}
+    Player.focusOn(noah.group, Object.assign({ dist: 3.0, height: 1.45, lookH: 1.2 }, opts));
+  },
+  /* 연출 종료 — 노아 대기 클립 복귀 + 카메라 원위치 */
+  noahRest() {
+    const noah = this.noah;
+    if (noah && noah.play) noah.play('idle', 0.35);
+    Player.clearFocus();
+  },
+
   /* 노아 조립 연출 (하늘에서 부품이 내려와 조립!) */
   async assembleNoah(x, z) {
     this.noah = Chars.noah(State.get('noahDesign'));
@@ -234,9 +254,14 @@ const Flow = {
     // customTrigger: noah_design — human / animal / car
     const design = await Mini.noahDesign();
     State.set('noahDesign', design);
+    // P3: 선택한 디자인의 노아 GLB 프리로드 (실패해도 박스 노아로 진행)
+    const noahKey = { human: 'noahHuman', animal: 'noahAnimal', car: 'noahCar' }[design];
+    await Assets.preloadWithBar([noahKey], '노아를 조립할 준비 중...');
     await this.assembleNoah(0, -3.5);
     UI.setBond('intimacy', 15);              // 💕 노아와의 첫 만남!
+    this.noahMoment('greet');                // 🎥 꾸벅 인사 + 카메라 클로즈업
     await UI.dialogue(DATA.dlg.mirror1_noahArrive);
+    this.noahRest();
 
     // 나에게 친구란 ___ (def / reason 저장)
     const def = await UI.textInput('나에게 친구란 _______ (이)다.', '예) 보물, 그늘 같은 사람...', '빈칸에 들어갈 나만의 말을 적어 보세요.');
@@ -358,6 +383,7 @@ const Flow = {
   async startPhase2() {
     this.phase = 2; this.step = 'home2';
     World.redMode = true;
+    Player.clearFocus();                     // 🎥 반전 연출 카메라 포커스 해제
     UI.clearQuest();
     UI.setBond('respect', 1);                // 💙 존중 게이지로 전환 (1%부터 다시)
     await UI.fadeOut();
@@ -506,7 +532,15 @@ const Flow = {
     UI.setBond('respect', 95);               // 💙 거울5(존중) 완료
 
     // 노아의 자기 고백 — "저는 사람이 아니에요. 그런데도..." (탈의인화 + 도덕적 대우의 근거)
+    // 🎥 카메라를 노아에게 밀어넣어 크게 잡고, 인정 클립(자동차형은 무시)으로 진심을 전한다
+    this.noahMoment('admit', { dist: 2.7, height: 1.4, lookH: 1.15 });
     await UI.dialogue(DATA.dlg.noahConfession);
+    this.noahRest();
+
+    // ═══ 🎈 노아의 기억 풍선 — 9원칙 제목↔뜻 짝맞추기 (MediaPipe Phase 2) ═══
+    await UI.dialogue(DATA.dlg.balloonIntro);
+    await Mini.balloonGame();
+    await UI.dialogue(DATA.dlg.balloonDone);
 
     // ═══ 도덕에 기반을 둔 공존·상생의 관계로! 약속 3가지 + 서명 ═══
     await this.sysMsg('여러분은 노아와 <도덕에 기반을 둔 공존·상생의 관계>를 만들어가고 있어요! 이제 마지막 마무리를 해볼까요?');

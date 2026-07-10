@@ -238,6 +238,14 @@ const DevMode = {
       await UI.dialogue(DATA.dlg.rps2_after);
       Flow.sysMsg('(DEV) 가위바위보 봉인판 테스트 끝');
     }},
+    { label: '🎈 기억 풍선 (미니게임만)', phase: 2, fn: async () => {
+      DevMode._bootstrap(2);
+      await World.go('hallway', { x: -14, z: 0, ry: Math.PI / 2 });
+      await UI.dialogue(DATA.dlg.balloonIntro);
+      await Mini.balloonGame();
+      await UI.dialogue(DATA.dlg.balloonDone);
+      Flow.sysMsg('(DEV) 기억 풍선 테스트 끝');
+    }},
     { label: '💙 존중3: 미술 자유 (교실)', phase: 2, fn: async () => {
       DevMode._bootstrap(2);
       await World.go('classroom', { x: 3.0, z: 4.8, ry: Math.PI });
@@ -292,10 +300,17 @@ const DevMode = {
           <div class="dev-sec-title phase2-title">▶ 2단계 존중 에피소드</div>
           <div class="dev-ep-list">${byPhase(2)}</div>
         </div>
+        <div class="dev-section">
+          <div class="dev-sec-title" style="background:#0d3a2a;color:#69f0ae;">▶ 도구 (P3)</div>
+          <div class="dev-ep-list"><button class="dev-ep-btn" data-viewer="1">🎭 GLB 모델·애니메이션 뷰어</button></div>
+        </div>
         <p class="dev-warn">⚠ 점프 시 현재 진행 상황이 초기화됩니다. State 기본값으로 설정됩니다.</p>
       </div>`);
 
-    ov.querySelectorAll('.dev-ep-btn').forEach(btn => {
+    ov.querySelector('[data-viewer]').onclick = () => {
+      Sound.pop(); UI.close(ov); Player.enabled = wasEnabled; DevMode.glbViewer();
+    };
+    ov.querySelectorAll('.dev-ep-btn[data-i]').forEach(btn => {
       btn.onclick = () => {
         Sound.pop();
         UI.close(ov);
@@ -307,6 +322,98 @@ const DevMode = {
       Sound.pop();
       UI.close(ov);
       Player.enabled = wasEnabled;
+    };
+  },
+
+  /* 🎭 GLB 모델·애니메이션 뷰어 — 클립 식별용 (NlaTrack 이름이 무의미하므로 눈으로 확인) */
+  glbViewer() {
+    const models = [
+      ['playerM', '👦 남자 주인공'], ['playerF', '👧 여자 주인공'], ['teacher', '🧑‍🏫 선생님'],
+      ['friendM', '🧒 남자 친구'], ['friendF', '👧 여자 친구'],
+      ['noahHuman', '🤖 노아 인간'], ['noahAnimal', '🐱 노아 동물'], ['noahCar', '🚗 노아 자동차'],
+    ];
+    const ov = UI.overlay(`
+      <div class="ov-panel glbv-panel">
+        <button class="nb-close">✕</button>
+        <h3 class="glbv-title">🎭 GLB 뷰어 <span class="glbv-info">모델을 고르세요</span></h3>
+        <div class="glbv-models">${models.map(m =>
+          `<button class="glbv-mbtn" data-n="${m[0]}">${m[1]}</button>`).join('')}</div>
+        <canvas class="glbv-canvas" width="480" height="360"></canvas>
+        <div class="glbv-clips"><span class="glbv-hint">모델을 고르면 애니메이션 클립 버튼이 나타나요</span></div>
+      </div>`);
+    const canvas = ov.querySelector('.glbv-canvas');
+    const infoEl = ov.querySelector('.glbv-info');
+    const clipsEl = ov.querySelector('.glbv-clips');
+
+    const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true });
+    renderer.setPixelRatio(Math.min(devicePixelRatio, 1.5));
+    renderer.setSize(canvas.width, canvas.height, false);
+    const scene = new THREE.Scene();
+    const cam = new THREE.PerspectiveCamera(40, canvas.width / canvas.height, 0.1, 100);
+    cam.position.set(0, 1.1, 3.6); cam.lookAt(0, 0.9, 0);
+    scene.add(new THREE.AmbientLight(0xffffff, 0.85));
+    const dir = new THREE.DirectionalLight(0xffffff, 0.7); dir.position.set(2, 4, 3); scene.add(dir);
+
+    let ch = null, rot = true, raf = null, clock = performance.now();
+    const loop = () => {
+      raf = requestAnimationFrame(loop);
+      const now = performance.now(), dt = Math.min(0.05, (now - clock) / 1000); clock = now;
+      if (ch) { if (rot) ch.group.rotation.y += 0.012; ch.update(dt); }
+      renderer.render(scene, cam);
+    };
+    loop();
+
+    const loadModel = async name => {
+      infoEl.textContent = '불러오는 중...';
+      clipsEl.innerHTML = '<span class="glbv-hint">로딩 중...</span>';
+      const g = await Assets.loadOne(name, p => { infoEl.textContent = Math.round(p * 100) + '%'; });
+      if (!g) { infoEl.textContent = '❌ 로드 실패'; clipsEl.innerHTML = `<span class="glbv-hint">${Assets.failHint()}</span>`; return; }
+      if (ch) scene.remove(ch.group);
+      const isCar = name === 'noahCar';
+      ch = Chars.glbChar(name, { height: isCar ? 1.2 : 1.7 });
+      if (!ch) { infoEl.textContent = '❌ 인스턴스 실패'; return; }
+      scene.add(ch.group);
+      const n = ch.actions.length;
+      infoEl.textContent = `클립 ${n}개 · 드래그로 회전`;
+      // 매핑된 의미 이름 표시 (인덱스 → 한국어 동작), 미사용 클립은 회색
+      const map = (Chars.CLIPS && Chars.CLIPS[name]) || {};
+      const labelOf = i => {
+        const key = Object.keys(map).find(k => map[k] === i);
+        return key ? (Chars.CLIP_LABELS[key] || key) : '미사용';
+      };
+      clipsEl.innerHTML = n === 0 ? '<span class="glbv-hint">이 모델엔 애니메이션이 없어요 (정적)</span>'
+        : ch.actions.map((a, i) => {
+            const lab = labelOf(i);
+            const off = lab === '미사용' ? ' style="opacity:.45"' : '';
+            return `<button class="glbv-cbtn" data-i="${i}"${off}>▶ [${i}] ${lab} · ${(a.getClip().duration).toFixed(1)}초</button>`;
+          }).join('')
+          + '<button class="glbv-cbtn stop">⏸ 정지</button>';
+      clipsEl.querySelectorAll('.glbv-cbtn[data-i]').forEach(b => b.onclick = () => {
+        Sound.pop(); ch.actions.forEach(a => a.stop()); ch._cur = -1; ch.play(+b.dataset.i, 0.15);
+        clipsEl.querySelectorAll('.glbv-cbtn').forEach(x => x.classList.remove('on')); b.classList.add('on');
+      });
+      const stop = clipsEl.querySelector('.stop');
+      if (stop) stop.onclick = () => { Sound.pop(); ch.actions.forEach(a => a.stop()); ch._cur = -1;
+        clipsEl.querySelectorAll('.glbv-cbtn').forEach(x => x.classList.remove('on')); };
+    };
+    ov.querySelectorAll('.glbv-mbtn').forEach(b => b.onclick = () => {
+      Sound.pop();
+      ov.querySelectorAll('.glbv-mbtn').forEach(x => x.classList.remove('on')); b.classList.add('on');
+      loadModel(b.dataset.n);
+    });
+
+    // 드래그 회전
+    let drag = false, px = 0;
+    const onMove = e => { if (drag && ch) { ch.group.rotation.y += (e.clientX - px) * 0.01; px = e.clientX; } };
+    const onUp = () => { drag = false; };
+    canvas.addEventListener('pointerdown', e => { drag = true; px = e.clientX; rot = false; });
+    window.addEventListener('pointermove', onMove);
+    window.addEventListener('pointerup', onUp);
+
+    ov.querySelector('.nb-close').onclick = () => {
+      Sound.pop(); cancelAnimationFrame(raf); renderer.dispose();
+      window.removeEventListener('pointermove', onMove); window.removeEventListener('pointerup', onUp);
+      UI.close(ov);
     };
   },
 };

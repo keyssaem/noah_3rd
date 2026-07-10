@@ -13,9 +13,11 @@
     Sound.playBGM('media/bgm.mp3');
   })();
 
-  document.getElementById('btn-start').addEventListener('click', () => {
+  document.getElementById('btn-start').addEventListener('click', async () => {
     Sound.pop();
     UI.hide(UI.els.menu);
+    // P3-C: 주인공 GLB 프리로드 — 선택 화면 미리보기 + 인게임 공용 (실패 시 박스 폴백)
+    await Assets.preloadWithBar(['playerM', 'playerF'], '주인공 캐릭터를 불러오는 중...');
     UI.show(UI.els.charScreen);
     startPreviews();
   });

@@ -72,6 +72,8 @@ const Endings = {
 
     // 축하 화면이 유리처럼 깨진다 → 지지직! 시스템 오류
     await this.shatterPanel(ov);
+    // 🎥 깨진 화면 너머로 드러난 노아가 두려워하는 모습을 카메라가 확 밀어넣어 크게 잡는다
+    Flow.noahMoment('scared', { dist: 2.6, height: 1.4, lookH: 1.2, snap: true });
     const glitch = UI.els.glitch;
     glitch.classList.remove('hidden'); glitch.classList.add('on');
     UI.bondBetray();                       // 💔 HUD 친밀도 게이지의 정체가 '도구화'로 드러난다
