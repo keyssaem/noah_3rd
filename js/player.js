@@ -90,9 +90,42 @@ const Player = {
     return g;
   },
 
+  /* 발판 윗면에 올라갈 높이가 되기 전에는 발판 아래 사각 영역에 진입하지 못하게 한다. */
+  resolvePlatformBlocks(prevX, prevZ) {
+    const radius = 0.35;
+    for (const p of World.platforms) {
+      // 이 높이부터는 기존 착지 판정이 윗면으로 올려 주므로 옆면 통과를 허용한다.
+      if (p.solidBelow === false || this.pos.y >= p.y - 0.35) continue;
+
+      const minX = p.minX - radius, maxX = p.maxX + radius;
+      const minZ = p.minZ - radius, maxZ = p.maxZ + radius;
+      if (this.pos.x <= minX || this.pos.x >= maxX ||
+          this.pos.z <= minZ || this.pos.z >= maxZ) continue;
+
+      let resolved = false;
+      if (prevX <= minX) { this.pos.x = minX; resolved = true; }
+      else if (prevX >= maxX) { this.pos.x = maxX; resolved = true; }
+      if (prevZ <= minZ) { this.pos.z = minZ; resolved = true; }
+      else if (prevZ >= maxZ) { this.pos.z = maxZ; resolved = true; }
+
+      // 스폰·텔레포트 등으로 이미 내부에 있다면 가장 가까운 옆면으로 밀어낸다.
+      if (!resolved) {
+        const sides = [
+          { gap: this.pos.x - minX, axis: 'x', value: minX },
+          { gap: maxX - this.pos.x, axis: 'x', value: maxX },
+          { gap: this.pos.z - minZ, axis: 'z', value: minZ },
+          { gap: maxZ - this.pos.z, axis: 'z', value: maxZ },
+        ];
+        const side = sides.reduce((best, item) => item.gap < best.gap ? item : best);
+        this.pos[side.axis] = side.value;
+      }
+    }
+  },
+
   update(dt) {
     if (!this.char) return;
 
+    const prevX = this.pos.x, prevZ = this.pos.z;
     let mx = 0, mz = 0;
     if (this.enabled) {
       if (this.keys['KeyW'] || this.keys['ArrowUp']) mz -= 1;
@@ -109,6 +142,7 @@ const Player = {
       this.pos.z += mz * this.SPEED * dt;
       this.yaw = Math.atan2(mx, mz);
     }
+    this.resolvePlatformBlocks(prevX, prevZ);
 
     // 중력 & 점프
     const gh = this.groundHeight();

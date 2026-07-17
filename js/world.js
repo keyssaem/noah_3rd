@@ -58,13 +58,7 @@ const World = {
     this.obstacles.push({ x, z, r: 0.7 * s });
   },
 
-  /* ───── 🏘️ 켄니 판타지 타운 키트 (배경 디자인 패치 — 실패 시 박스 폴백) ─────
-     부품 규격: 타일 1×1, 벽은 자기 타일의 +x 모서리에 붙는 패널(회전으로 방향 지정) */
-  KIT_PIECES: ['k_wall', 'k_door', 'k_winS', 'k_winG', 'k_gable', 'k_gtop', 'k_hgable', 'k_hgtop',
-    'k_tree', 'k_treeH', 'k_treeR', 'k_treeC', 'k_banner', 'k_lantern', 'k_chimney', 'k_fence',
-    'k_timberX', 'k_timberD', 'k_winRound', 'k_archTop', 'k_doorRound', 'k_hleft', 'k_hright'],
-  PRELOAD: {                          // 씬별 미리 받을 모델 ('KIT' = 켄니 배경 부품 묶음)
-    worldmap: 'KIT',
+  PRELOAD: {                          // 씬별 미리 받을 캐릭터 모델
     classroom: ['teacher'],
     playground: ['teacher'],
     hallway: ['teacher'],               // 복도2에 선생님 등장
@@ -74,99 +68,7 @@ const World = {
     const spec = this.PRELOAD[name];
     if (!spec) return;
     if (typeof Assets === 'undefined' || !Assets.supported()) return;
-    if (spec !== 'KIT') { await Assets.preload(spec); return; }
-    await Assets.preload(this.KIT_PIECES);
-    // 재질을 Lambert로 통일 (기존 씬 톤 + 구형 기기 성능) — 캐시당 1회
-    for (const n of this.KIT_PIECES) {
-      const g = Assets._cache[n];
-      if (!g || g._lambert) continue;
-      g._lambert = true;
-      g.scene.traverse(o => {
-        if (o.isMesh && o.material && o.material.isMeshStandardMaterial)
-          o.material = new THREE.MeshLambertMaterial({ map: o.material.map || null, color: o.material.color });
-      });
-    }
-  },
-  kitReady() { return false; },   // 켄니 GLB 비활성 → 박스 폴백 강제 (태블릿 GLB 깨짐 대응)
-
-  /* 키트 부품 1개를 부모 그룹의 타일 좌표에 배치 (sc: 스칼라 또는 [x,y,z] 스케일) */
-  piece(parent, name, x, y, z, ry = 0, sc = null) {
-    const inst = Assets.instance(name);
-    if (!inst) return null;
-    inst.scene.position.set(x, y, z);
-    inst.scene.rotation.y = ry;
-    if (sc != null) Array.isArray(sc) ? inst.scene.scale.set(sc[0], sc[1], sc[2]) : inst.scene.scale.setScalar(sc);
-    inst.scene.traverse(o => { if (o.isMesh) { o.castShadow = true; o.receiveShadow = true; } });
-    parent.add(inst.scene);
-    return inst.scene;
-  },
-
-  /* 🏠 빨간 지붕 오두막 (3타일 길이 · 문은 그룹의 +z 방향) */
-  kitHouse(cx, cz, s = 2.2, ry = -Math.PI / 2) {
-    const g = new THREE.Group();
-    g.position.set(cx, 0, cz); g.rotation.y = ry; g.scale.setScalar(s);
-    const P = (n, x, y, z, r) => this.piece(g, n, x, y, z, r || 0);
-    // 정면(+x): 창 · 문 · 창  /  뒷면 · 양끝: 벽
-    P('k_winS', 0, 0, -1); P('k_door', 0, 0, 0); P('k_winS', 0, 0, 1);
-    P('k_wall', 0, 0, -1, Math.PI); P('k_wall', 0, 0, 0, Math.PI); P('k_wall', 0, 0, 1, Math.PI);
-    P('k_wall', 0, 0, -1, Math.PI / 2); P('k_wall', 0, 0, 1, -Math.PI / 2);
-    // A자 지붕: 게이블 끝 + 능선 + 게이블 끝(반전) — 🔴 high 세트가 샘플의 빨간 지붕 (low는 초록)
-    P('k_hgable', 0, 1, -1); P('k_hgtop', 0, 1, 0); P('k_hgable', 0, 1, 1, Math.PI);
-    P('k_chimney', 0, 1.45, 0.3);
-    P('k_lantern', 0.85, 0, 1.05);
-    this.root.add(g);
-    return g;
-  },
-
-  /* 🏫 학교 = 랜드마크 회관 (목재 골조 튜더식 + 아치 대문 + 둥근창 + 중앙 큰 게이블)
-     집(석조 오두막)과 확실히 구분되도록 벽 재질·형태·규모를 전부 다르게 */
-  kitSchool(cx, cz, s = 2.5, ry = -Math.PI / 2) {
-    const g = new THREE.Group();
-    g.position.set(cx, 0, cz); g.rotation.y = ry; g.scale.setScalar(s);
-    const P = (n, x, y, z, r, sc) => this.piece(g, n, x, y, z, r || 0, sc);
-
-    // ── 정면 파사드 (local +x) : 목재 골조 벽 + 아치 대문 + 둥근 창 (2층) ──
-    for (let z = -2; z <= 2; z++) {
-      // 1층: 중앙 아치 대문 / 그 옆 둥근창 / 끝 목재벽
-      P(z === 0 ? 'k_doorRound' : (Math.abs(z) === 1 ? 'k_winRound' : 'k_timberX'), 0, 0, z);
-      // 2층: 중앙·안쪽 둥근창 / 끝 대각 골조
-      P(Math.abs(z) <= 1 ? 'k_winRound' : 'k_timberD', 0, 1, z);
-      // 뒷벽(–x) 1·2층
-      P('k_wall', 0, 0, z, Math.PI); P('k_wall', 0, 1, z, Math.PI);
-    }
-    // 양 끝벽 (±z 캡)
-    P('k_wall', 0, 0, -2, Math.PI / 2); P('k_wall', 0, 1, -2, Math.PI / 2);
-    P('k_wall', 0, 0, 2, -Math.PI / 2); P('k_wall', 0, 1, 2, -Math.PI / 2);
-
-    // ── 양쪽 날개 지붕 (2층 위, 낮게 눕는 지붕) ──
-    for (let z = -2; z <= 2; z++) {
-      if (z === 0) continue;
-      P('k_hgtop', 0, 2, z);
-    }
-
-    // ── 중앙 타워: 3층 + 정면을 향한 '하나의 큰 게이블' (넓고 높게) ──
-    P('k_timberX', 0, 2, 0);                         // 중앙 3층 정면
-    P('k_wall', 0, 2, 0, Math.PI);                   // 중앙 3층 뒷면
-    P('k_hgable', 0, 3, 0, 0, [1.9, 1.15, 1.0]);     // ★ 큰 정면 게이블 (가로로 넓게)
-    P('k_banner', 0.12, 2, 0);                       // 게이블 아래 빨간 배너
-    P('k_chimney', 0, 2.05, -1.6);                   // 굴뚝
-
-    P('k_lantern', 0.95, 0, -2.4); P('k_lantern', 0.95, 0, 2.4);   // 정문 양옆 가로등
-    this.root.add(g);
-    return g;
-  },
-
-  /* 🌳 키트 나무 (4종 랜덤 · 미로드 시 기존 콘 나무 폴백) */
-  kitTree(x, z, s = 1) {
-    const kinds = ['k_tree', 'k_treeH', 'k_treeR', 'k_treeC'];
-    const inst = Assets.instance(kinds[Math.floor(Math.random() * kinds.length)]);
-    if (!inst) return this.tree(x, z, s);
-    inst.scene.position.set(x, 0, z);
-    inst.scene.rotation.y = Math.random() * Math.PI * 2;
-    inst.scene.scale.setScalar(1.7 * s);
-    inst.scene.traverse(o => { if (o.isMesh) { o.castShadow = true; o.receiveShadow = true; } });
-    this.root.add(inst.scene);
-    this.obstacles.push({ x, z, r: 0.8 * s });
+    await Assets.preload(spec);
   },
   flower(x, z) {
     const f = new THREE.Mesh(new THREE.SphereGeometry(0.14, 6, 6),
@@ -202,7 +104,11 @@ const World = {
   addPlatform(x, y, z, w, d, c = 0xff922b) {
     const p = this.box(w, 0.5, d, c, x, y - 0.25, z);
     const top = this.box(w, 0.12, d, 0xffe066, x, y + 0.02, z);
-    this.platforms.push({ minX: x - w / 2, maxX: x + w / 2, minZ: z - d / 2, maxZ: z + d / 2, y });
+    this.platforms.push({
+      minX: x - w / 2, maxX: x + w / 2,
+      minZ: z - d / 2, maxZ: z + d / 2,
+      y, solidBelow: true,
+    });
     return p;
   },
   addZone(x, z, r, label, onInteract, auto = false) {
@@ -242,7 +148,7 @@ const World = {
 
   async go(name, spawn) {
     await UI.fadeOut();
-    await this.preloadProps(name);          // 🏘️ 씬 배경 부품 프리로드 (캐시되면 즉시)
+    await this.preloadProps(name);          // 씬 캐릭터 모델 프리로드 (캐시되면 즉시)
     this.build(name);
     Player.keys = {};                       // 전환 시 입력 상태 초기화 (키 끼임 방지)
     UI.joyVec.x = 0; UI.joyVec.y = 0;
@@ -309,36 +215,24 @@ const World = {
     road.rotation.x = -Math.PI / 2; road.rotation.z = -Math.PI / 4;
     road.position.set(0, 0.02, 0); this.root.add(road);
 
-    // 우리 집 — 🏘️ 켄니 오두막 (키트 미로드 시 기존 박스 폴백)
-    if (this.kitReady()) {
-      this.kitHouse(-17, 15);
-      [[-19.2, 15], [-17, 15], [-14.8, 15]].forEach(p => this.obstacles.push({ x: p[0], z: p[1], r: 1.5 }));
-    } else {
-      this.box(5, 3, 4.5, 0xffcc80, -17, 1.5, 15);
-      const roof1 = new THREE.Mesh(new THREE.ConeGeometry(4.2, 2.2, 4), this.mat(0xe64a19));
-      roof1.position.set(-17, 4.1, 15); roof1.rotation.y = Math.PI / 4; roof1.castShadow = true; this.root.add(roof1);
-      this.box(1.2, 2, 0.2, 0x6d4c41, -17, 1, 17.35); // 대문
-      this.obstacles.push({ x: -17, z: 15, r: 3.4 });
-    }
+    // 우리 집 — 기본 도형으로 만든 박스 버전
+    this.box(5, 3, 4.5, 0xffcc80, -17, 1.5, 15);
+    const roof1 = new THREE.Mesh(new THREE.ConeGeometry(4.2, 2.2, 4), this.mat(0xe64a19));
+    roof1.position.set(-17, 4.1, 15); roof1.rotation.y = Math.PI / 4; roof1.castShadow = true; this.root.add(roof1);
+    this.box(1.2, 2, 0.2, 0x6d4c41, -17, 1, 17.35); // 대문
+    this.obstacles.push({ x: -17, z: 15, r: 3.4 });
 
-    // 학교 — 🏫 켄니 2층 건물 (키트 미로드 시 기존 박스 폴백)
-    if (this.kitReady()) {
-      this.kitSchool(17, -18);
-      // 건물 라인 충돌원 (문 통로만 비움) + 문 뒤 통과 방지
-      [[11.5, -18], [14.2, -18], [19.8, -18], [22.5, -18]].forEach(p => this.obstacles.push({ x: p[0], z: p[1], r: 1.8 }));
-      this.obstacles.push({ x: 17, z: -19.4, r: 1.8 });
-    } else {
-      this.box(14, 6, 6, 0xffe0b2, 17, 3, -18);
-      this.box(2, 2.6, 0.3, 0x5d4037, 17, 1.3, -14.8);          // 정문
-      for (let i = 0; i < 4; i++) {
-        this.box(1.6, 1.4, 0.2, 0x90caf9, 11.5 + i * 3.7, 4.2, -14.9);  // 창문
-      }
-      this.box(3, 1.2, 0.4, 0xffffff, 17, 6.9, -15.2);
-      this.box(0.15, 4, 0.15, 0x9e9e9e, 11, 8, -16);
-      this.box(1.6, 1, 0.05, 0x42a5f5, 11.9, 9.4, -16);
-      // 건물 벽에 붙는 작은 충돌원 4개 — 문 앞까지 걸어갈 수 있게
-      [11, 15, 19, 23].forEach(x => this.obstacles.push({ x, z: -18, r: 3.4 }));
+    // 학교 — 기본 도형으로 만든 박스 버전
+    this.box(14, 6, 6, 0xffe0b2, 17, 3, -18);
+    this.box(2, 2.6, 0.3, 0x5d4037, 17, 1.3, -14.8);          // 정문
+    for (let i = 0; i < 4; i++) {
+      this.box(1.6, 1.4, 0.2, 0x90caf9, 11.5 + i * 3.7, 4.2, -14.9);  // 창문
     }
+    this.box(3, 1.2, 0.4, 0xffffff, 17, 6.9, -15.2);
+    this.box(0.15, 4, 0.15, 0x9e9e9e, 11, 8, -16);
+    this.box(1.6, 1, 0.05, 0x42a5f5, 11.9, 9.4, -16);
+    // 건물 벽에 붙는 작은 충돌원 4개 — 문 앞까지 걸어갈 수 있게
+    [11, 15, 19, 23].forEach(x => this.obstacles.push({ x, z: -18, r: 3.4 }));
     this.addZone(17, -13.6, 3.0, '학교 들어가기', () => Flow.onZone('school_door'));
 
     // 마리오풍 점프 발판 + 로봇 3원칙 카드 (연구소 트럭이 떨어뜨림!)
@@ -350,11 +244,9 @@ const World = {
     this.addPlatform(9, 1.5, -8, 3, 3, 0x63e6be);
     this.addItem(9, 2.8, -8, 'robot3');
 
-    // 나무 & 꽃 — 🌳 켄니 나무 4종 랜덤 (미로드 시 콘 나무 폴백)
+    // 나무 & 꽃 — 기본 도형 버전
     [[-28, -5], [-25, 22], [-8, 28], [12, 20], [25, 8], [28, -6], [-30, -25], [-12, -20], [3, 24], [30, 24]]
-      .forEach(p => this.kitReady()
-        ? this.kitTree(p[0], p[1], 0.9 + Math.random() * 0.5)
-        : this.tree(p[0], p[1], 0.9 + Math.random() * 0.5));
+      .forEach(p => this.tree(p[0], p[1], 0.9 + Math.random() * 0.5));
     for (let i = 0; i < 26; i++) this.flower(-34 + Math.random() * 68, -34 + Math.random() * 68);
 
     // 울타리
