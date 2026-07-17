@@ -8,6 +8,23 @@ body { font-family:'Jua','Gowun Dodum',sans-serif; background:#1a1a2e; user-sele
 kbd { background:#fff; border:2px solid #cbd5e1; border-bottom-width:4px; border-radius:6px;
   padding:1px 7px; font-family:inherit; font-size:0.85em; color:#334155; }
 
+/* WebGL 초기화/컨텍스트 오류 안내 */
+#webgl-error { z-index:1000; background:radial-gradient(circle at top,#334155,#0f172a 70%);
+  padding:20px; overflow-y:auto; }
+.webgl-error-card { width:min(620px,100%); padding:30px; border-radius:24px; text-align:center;
+  color:#1f2937; background:rgba(255,255,255,.97); box-shadow:0 24px 70px rgba(0,0,0,.45); }
+.webgl-error-icon { font-size:48px; line-height:1; margin-bottom:10px; }
+.webgl-error-card h2 { color:#c2410c; font-size:clamp(24px,4vw,36px); margin-bottom:12px; }
+.webgl-error-card p { font-family:'Gowun Dodum',sans-serif; font-size:clamp(15px,2vw,18px); line-height:1.6; }
+.webgl-error-card ol { margin:18px auto 24px; padding-left:1.5em; width:min(500px,100%);
+  text-align:left; font-family:'Gowun Dodum',sans-serif; line-height:1.8; }
+.webgl-error-card code { padding:2px 7px; border-radius:6px; background:#e2e8f0; user-select:text; }
+.webgl-error-alt { margin-top:18px; color:#64748b; font-size:14px !important; }
+.webgl-preview-unavailable { display:none !important; }
+.webgl-preview-fallback { display:flex; align-items:center; justify-content:center; min-height:150px;
+  padding:18px; border-radius:12px; color:#64748b; background:linear-gradient(#dbeafe,#eff6ff);
+  font-family:'Gowun Dodum',sans-serif; font-size:14px; text-align:center; }
+
 /* ═══════════════ 화면(스크린) 공통 ═══════════════ */
 .screen { position:absolute; inset:0; z-index:50; display:flex; align-items:center; justify-content:center; }
 

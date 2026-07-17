@@ -3,7 +3,15 @@
   const canvas = document.getElementById('game-canvas');
   UI.init();
   Settings.init();                 // ⚙️ 저장된 설정 적용 (효과음/BGM/글자크기)
-  World.init(canvas);
+  try {
+    World.init(canvas);
+  } catch (error) {
+    console.error('WebGL initialization failed:', error, error.cause || '');
+    Rendering.dispose(World.renderer);
+    World.renderer = null;
+    UI.showWebGLError('WebGL을 초기화하지 못했습니다. Chrome의 그래픽 가속을 켠 뒤 브라우저를 다시 시작해 주세요.');
+    return;
+  }
   Player.init();
   Player.initItemClick(canvas);
 
@@ -50,6 +58,7 @@
     Sound.win();
     Sound.fadeOutBGM(700);              // 🎵 실제 게임 시작과 함께 BGM 페이드아웃
     previews.forEach(p => p.dispose());   // 미리보기 렌더러 정리
+    previews.length = 0;
     State.set('name', nameInput.value.trim());
     State.set('gender', gender);
     UI.els.fade.classList.add('on');
@@ -62,6 +71,11 @@
   /* ───── 게임 루프 ───── */
   let last = performance.now();
   function loop(now) {
+    if (World.contextLost) {
+      last = now;
+      requestAnimationFrame(loop);
+      return;
+    }
     const dt = Math.min(0.05, (now - last) / 1000);
     last = now;
     World.update(dt);

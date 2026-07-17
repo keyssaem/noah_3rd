@@ -1,13 +1,13 @@
 /* ═══════════ World — Three.js 씬 & 공간(집/월드맵/교실/운동장/복도) ═══════════ */
 const World = {
-  renderer: null, scene: null, camera: null,
+  renderer: null, scene: null, camera: null, contextLost: false,
   root: null, current: '',
   platforms: [], bounds: null, zones: [], npcs: [], items: [], obstacles: [],
   beacon: null, redMode: false,
   _hemi: null, _sun: null,
 
   init(canvas) {
-    this.renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
+    this.renderer = Rendering.create({ canvas, antialias: true }, '메인 게임 화면');
     this.renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
     this.renderer.shadowMap.enabled = true;
     this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
@@ -26,6 +26,8 @@ const World = {
     this.scene.add(this._sun);
 
     this.resize();
+    canvas.addEventListener('webglcontextlost', () => { this.contextLost = true; });
+    canvas.addEventListener('webglcontextrestored', () => { this.contextLost = false; });
     window.addEventListener('resize', () => this.resize());
   },
 

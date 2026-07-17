@@ -357,8 +357,29 @@ const DevMode = {
     const canvas = ov.querySelector('.glbv-canvas');
     const infoEl = ov.querySelector('.glbv-info');
     const clipsEl = ov.querySelector('.glbv-clips');
+    const closeBtn = ov.querySelector('.nb-close');
+    let renderer = null, raf = null;
+    let onMove = null, onUp = null;
 
-    const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true });
+    const closeViewer = () => {
+      Sound.pop();
+      cancelAnimationFrame(raf);
+      Rendering.dispose(renderer);
+      if (onMove) window.removeEventListener('pointermove', onMove);
+      if (onUp) window.removeEventListener('pointerup', onUp);
+      UI.close(ov);
+    };
+    closeBtn.onclick = closeViewer;
+
+    try {
+      renderer = Rendering.create({ canvas, antialias: true, alpha: true }, 'GLB 미리보기');
+    } catch (error) {
+      console.warn('GLB viewer WebGL initialization failed:', error);
+      infoEl.textContent = '3D 미리보기 사용 불가';
+      clipsEl.textContent = '그래픽 가속 상태를 확인한 뒤 다시 시도해 주세요.';
+      Rendering.previewFallback(canvas, 'GLB 미리보기를 표시할 수 없습니다.');
+      return;
+    }
     renderer.setPixelRatio(Math.min(devicePixelRatio, 1.5));
     renderer.setSize(canvas.width, canvas.height, false);
     const scene = new THREE.Scene();
@@ -367,7 +388,7 @@ const DevMode = {
     scene.add(new THREE.AmbientLight(0xffffff, 0.85));
     const dir = new THREE.DirectionalLight(0xffffff, 0.7); dir.position.set(2, 4, 3); scene.add(dir);
 
-    let ch = null, rot = true, raf = null, clock = performance.now();
+    let ch = null, rot = true, clock = performance.now();
     const loop = () => {
       raf = requestAnimationFrame(loop);
       const now = performance.now(), dt = Math.min(0.05, (now - clock) / 1000); clock = now;
@@ -417,16 +438,11 @@ const DevMode = {
 
     // 드래그 회전
     let drag = false, px = 0;
-    const onMove = e => { if (drag && ch) { ch.group.rotation.y += (e.clientX - px) * 0.01; px = e.clientX; } };
-    const onUp = () => { drag = false; };
+    onMove = e => { if (drag && ch) { ch.group.rotation.y += (e.clientX - px) * 0.01; px = e.clientX; } };
+    onUp = () => { drag = false; };
     canvas.addEventListener('pointerdown', e => { drag = true; px = e.clientX; rot = false; });
     window.addEventListener('pointermove', onMove);
     window.addEventListener('pointerup', onUp);
 
-    ov.querySelector('.nb-close').onclick = () => {
-      Sound.pop(); cancelAnimationFrame(raf); renderer.dispose();
-      window.removeEventListener('pointermove', onMove); window.removeEventListener('pointerup', onUp);
-      UI.close(ov);
-    };
   },
 };

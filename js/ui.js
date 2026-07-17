@@ -21,6 +21,7 @@ const UI = {
       dlgSpeaker: $('dlg-speaker'), dlgText: $('dlg-text'), dlgNext: $('dlg-next'),
       homeBtn: $('home-btn'),
       overlayRoot: $('overlay-root'), fade: $('fade'), glitch: $('glitch-layer'),
+      webglError: $('webgl-error'), webglErrorMessage: $('webgl-error-message'),
     };
     this.els.dlgBox.addEventListener('pointerdown', e => { e.stopPropagation(); this.advance(); });
     window.addEventListener('keydown', e => {
@@ -30,6 +31,15 @@ const UI = {
     this.els.nbBtn.addEventListener('click', () => { Sound.pop(); DevMode.handleClick(); });
     // ⚙️ 설정 패널 열기
     this.els.homeBtn.addEventListener('click', () => this.openSettings());
+    $('webgl-reload').addEventListener('click', () => location.reload());
+    window.addEventListener('app:webgl-lost', event => {
+      if (event.detail.canvas === document.getElementById('game-canvas')) {
+        this.showWebGLError('그래픽 장치 연결이 끊겼습니다. 잠시 기다리거나 새로고침해 주세요.');
+      }
+    });
+    window.addEventListener('app:webgl-restored', event => {
+      if (event.detail.canvas === document.getElementById('game-canvas')) this.hideWebGLError();
+    });
     this.initJoystick();
   },
 
@@ -39,6 +49,11 @@ const UI = {
   async fadeOut() { this.els.fade.classList.add('on'); await this.wait(520); },
   async fadeIn() { this.els.fade.classList.remove('on'); await this.wait(520); },
   wait(ms) { return new Promise(r => setTimeout(r, ms)); },
+  showWebGLError(message) {
+    this.els.webglErrorMessage.textContent = message;
+    this.show(this.els.webglError);
+  },
+  hideWebGLError() { this.hide(this.els.webglError); },
 
   /* ───────── 대화 시스템 ───────── */
   dialogue(lines) {

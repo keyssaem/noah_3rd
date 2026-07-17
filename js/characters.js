@@ -322,24 +322,39 @@ const Chars = {
 
   /* ───── 회전 미리보기 (캐릭터 선택 / 노아 디자인 선택) ───── */
   makePreview(canvas, buildFn) {
-    const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true });
+    let renderer;
+    try {
+      renderer = Rendering.create({ canvas, antialias: true, alpha: true }, '캐릭터 미리보기');
+    } catch (error) {
+      console.warn('Character preview WebGL initialization failed:', error);
+      const removeFallback = Rendering.previewFallback(canvas);
+      return { dispose: removeFallback };
+    }
     renderer.setSize(canvas.width, canvas.height, false);
     const scene = new THREE.Scene();
     const cam = new THREE.PerspectiveCamera(40, canvas.width / canvas.height, 0.1, 50);
     cam.position.set(0, 1.4, 3.4); cam.lookAt(0, 0.85, 0);
     scene.add(new THREE.AmbientLight(0xffffff, 0.75));
     const dir = new THREE.DirectionalLight(0xffffff, 0.7); dir.position.set(2, 4, 3); scene.add(dir);
-    const ch = buildFn();
+    let ch;
+    try {
+      ch = buildFn();
+    } catch (error) {
+      console.warn('Character preview creation failed:', error);
+      Rendering.dispose(renderer);
+      const removeFallback = Rendering.previewFallback(canvas);
+      return { dispose: removeFallback };
+    }
     scene.add(ch.group);
-    let alive = true;
+    let alive = true, raf = null;
     const loop = () => {
       if (!alive) return;
       ch.group.rotation.y += 0.02;
       ch.update(0.016, false);
       renderer.render(scene, cam);
-      requestAnimationFrame(loop);
+      raf = requestAnimationFrame(loop);
     };
     loop();
-    return { dispose() { alive = false; renderer.dispose(); } };
+    return { dispose() { alive = false; cancelAnimationFrame(raf); Rendering.dispose(renderer); } };
   },
 };
