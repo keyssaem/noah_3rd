@@ -74,6 +74,12 @@ const Endings = {
     await this.shatterPanel(ov);
     // 🎥 깨진 화면 너머로 드러난 노아가 두려워하는 모습을 카메라가 확 밀어넣어 크게 잡는다
     Flow.noahMoment('scared', { dist: 2.6, height: 1.4, lookH: 1.2, snap: true });
+    // ── 1막 · 균열(소리만) — 크랙 시각 연출은 기각. 탁, 탁, 탁 파열음+흔들림+진동 4박자로 긴장만 쌓는다
+    await UI.wait(450);
+    for (let i = 0; i < 4; i++) {
+      Sound.glass(); FX.shake(11, 280); this.vibrate(70);
+      await UI.wait(i === 3 ? 620 : 460 - i * 40);   // 탁, 탁, 탁 — 점점 급해진다
+    }
     const glitch = UI.els.glitch;
     glitch.classList.remove('hidden'); glitch.classList.add('on');
     UI.bondBetray();                       // 💔 HUD 친밀도 게이지의 정체가 '도구화'로 드러난다
@@ -90,9 +96,15 @@ const Endings = {
     glitch.classList.remove('on'); glitch.classList.add('hidden');
     UI.close(err);
 
+    // ── 2막 · 진짜 꺼짐 — CRT 파워오프: 화면이 가로 한 줄로 수축 → 흰 점 → 완전 암전.
+    //    지지직 3연발 뒤 소리까지 뚝 끊긴다. 암전 1.5초 — 교실이 조용해지는 정적.
+    await FX.crtOff({ hold: 1500 });
+
     // ─── 새로운 화면: 노아 혼자, 교수님의 말을 떠올린다 ───
-    await UI.bigText(['. . . . . .', '🤖\n\n(어두운 화면 속, 노아 혼자.)',
+    const recall = UI.bigText(['. . . . . .', '🤖\n\n(어두운 화면 속, 노아 혼자.)',
       '노아는 연구소에서 교수님이 했던 말을\n하나씩 떠올린다...'], { bg: 'rgba(2,2,8,.98)' });
+    FX.blackRelease();   // 회상 화면이 선 뒤에야 암전막을 걷는다 — 월드가 한 프레임도 새지 않게
+    await recall;
     // 🎬 회상 컷씬 — 교수님이 노아 셋을 만들던 날 (스킵 불가: 반전의 핵심)
     await UI.playVideo('media/professor2.mp4');
     await UI.bigText(DATA.dlg.professorLines, { bg: 'rgba(2,2,8,.98)', must: true });  // 📖 교수님 회상: 스킵 불가
@@ -200,6 +212,42 @@ const Endings = {
     });
   },
 
+  /* 🖥 3막 · 재부팅 부트 시퀀스 — 검은 화면에 초록 모노스페이스 타이핑 + 커서 깜빡임.
+     "학생이 직접 코드를 입력해 노아를 다시 켠다"(7942 다이얼)에 의미를 입히는 다리.
+     동작 줄이기 설정이면 타이핑 없이 줄 단위로 즉시 표시 */
+  async bootSequence() {
+    const ov = UI.overlay('<div class="boot-term"></div>', 'boot-ov');
+    const term = ov.querySelector('.boot-term');
+    const cursor = document.createElement('span');
+    cursor.className = 'boot-cursor';
+    const typeLine = async text => {
+      const line = document.createElement('div');
+      line.className = 'boot-line';
+      const span = document.createElement('span');
+      line.appendChild(span); line.appendChild(cursor);   // 커서는 항상 마지막 줄 끝으로 이동
+      term.appendChild(line);
+      if (!UI.motionOK()) { span.textContent = text; Sound.tick(); await UI.wait(500); return;  }
+      for (let i = 0; i < text.length; i++) {
+        span.textContent += text[i];
+        if (i % 2 === 0) Sound.tick();
+        await UI.wait(30);
+      }
+    };
+    await UI.wait(600);
+    await typeLine('> 노아 v1.0 — 재시작 시도...');
+    await UI.wait(700);
+    await typeLine('> [관계 데이터]가 정상인가?');
+    await UI.wait(900);                                   // 검사 중 — 긴장의 한 박자
+    const fail = document.createElement('span');          // [오류] — 빨간 도장이 쾅
+    fail.className = 'fail'; fail.textContent = ' [오류]';
+    cursor.parentElement.insertBefore(fail, cursor);
+    Sound.error(); FX.shake(7, 300); this.vibrate(150);
+    await UI.wait(1300);
+    await typeLine('> 수동 재시작 필요: 비밀 코드를 입력하세요');
+    await UI.wait(1400);                                  // 커서만 깜빡 — '내 차례'임을 느끼는 시간
+    UI.close(ov);
+  },
+
   /* ═══════ 4-2 노아 강제 종료 & 재시작(비밀번호 7942) ═══════ */
   shutdownAndRestart() {
     return new Promise(async resolve => {
@@ -207,6 +255,9 @@ const Endings = {
         '🤖\n. . . 시 스 템 . . . 종 료 . . .',
         '⬛\n\n[ NOAH :: SHUTDOWN ]',
       ], { bg: '#000' });
+
+      // ── 3막 · 재부팅 몰입 — 곧장 대사가 아니라 터미널 부트 시퀀스부터
+      await this.bootSequence();
 
       const ov = UI.overlay(`
         <div style="text-align:center; max-width:min(560px,94vw);">
@@ -248,7 +299,7 @@ const Endings = {
 
       ov.querySelector('.hint').onclick = () => {
         Sound.chime();
-        msg.innerHTML = '👩\u200D🏫 선생님의 귓속말: "노아와 우리가 되고 싶은 사이는...<br>숫자로 <b>칠(7)·구(9)·사(4)·이(2)</b> 라고 읽는단다!"';
+        msg.innerHTML = '👩\u200D🏫 선생님의 귓속말: "노아가 우리와 되고 싶은 사이는...<br>숫자로 <b>칠(7)·구(9)·사(4)·이(2)</b> 라고 읽는단다!"';
       };
       let done = false;
       ov.querySelector('.go').onclick = async () => {
@@ -259,6 +310,7 @@ const Endings = {
           ov.querySelectorAll('.dial-window').forEach(w => w.classList.add('ok'));
           msg.innerHTML = '✅ 코드 일치! — 7942 : <b>친(7)구(9) 사(4)이(2)</b> —<br>노아를 재시작합니다...';
           await UI.wait(2000);
+          FX.blackHold();     // 암전막을 세운 채 다이얼을 걷는다 — 재부팅(startPhase2의 crtOn) 직전의 어둠
           UI.close(ov);
           resolve();
         } else {
@@ -460,14 +512,16 @@ const Endings = {
       y = top + boxH;
     }
 
-    // ─── 🎨 내가 그린 학교 그림 + ✍ 나의 다짐 서명 (있을 때만, 흰 카드 위에 배치) ───
-    //   측정(probe)·렌더 두 패스에 동일 media를 넘겨 예약 높이가 같으므로 잘림/여백 없음
-    const imgBlock = (img, title, targetW) => {
-      y += 34;
-      x.textAlign = 'center'; x.fillStyle = '#1971c2'; x.font = 'bold 30px Jua, sans-serif';
-      x.fillText(title, W / 2, y); y += 22;
+    // ─── 🎨 내가 그린 그림 병기 — 왼쪽 '나의 학교'(도구화) + 오른쪽 '노아와 함께'(존중) ───
+    //   측정(probe)·렌더 두 패스에 동일 media를 넘겨 예약 높이가 같으므로 잘림/여백 없음.
+    //   한 장만 있으면 단독 중앙 배치. (✍ 서명은 여기가 아니라 하단 이름 오른쪽에 소형 배치)
+    const imgCard = (img, title, cx, targetW, yTop) => {   // 반환: 소비한 높이
+      const font = 'bold 24px Jua, sans-serif';
+      x.textAlign = 'center'; x.fillStyle = '#1971c2'; x.font = font;
+      let ty = yTop;
+      wrap(title, targetW + 60, font).forEach(l => { x.fillText(l, cx, ty); ty += 32; });
       const w = targetW, h = w * img.height / img.width;
-      const ix = (W - w) / 2, iy = y;
+      const ix = cx - w / 2, iy = ty + 8;
       x.save();
       x.fillStyle = '#fff';
       this._roundRectPath(x, ix - 12, iy - 12, w + 24, h + 24, 16); x.fill();
@@ -475,10 +529,20 @@ const Endings = {
       this._roundRectPath(x, ix - 12, iy - 12, w + 24, h + 24, 16); x.stroke();
       x.restore();
       x.drawImage(img, ix, iy, w, h);
-      y += h + 30;
+      return iy + h + 12 - yTop;
     };
-    if (media.art) imgBlock(media.art, '🎨 내가 그린 <우리 학교>', 440);
-    if (media.sig) imgBlock(media.sig, '✍ 나의 다짐 서명', 470);
+    if (media.school && media.noah) {
+      y += 34;
+      const colW = 330;
+      const hL = imgCard(media.school, '🎨 나의 학교', PAD + colW / 2, colW, y);
+      const hR = imgCard(media.noah, '🤖 노아와 함께 있는 나의 모습', W - PAD - colW / 2, colW, y);
+      y += Math.max(hL, hR) + 26;
+    } else if (media.school || media.noah) {
+      y += 34;
+      const img = media.school || media.noah;
+      const title = media.school ? '🎨 나의 학교' : '🤖 노아와 함께 있는 나의 모습';
+      y += imgCard(img, title, W / 2, 440, y) + 26;
+    }
     return y;
   },
 
@@ -497,9 +561,10 @@ const Endings = {
     const ed = this._ending;
     const W = 1000;
 
-    // 🖼️ 학교 그림 + 서명 이미지를 먼저 로드 (양 패스가 동일 media를 써야 예약 높이가 일치) — 없으면 null로 생략
+    // 🖼️ 그림 2장 + 서명 이미지를 먼저 로드 (양 패스가 동일 media를 써야 예약 높이가 일치) — 없으면 null로 생략
     const media = {
-      art: await this._loadImg(State.get('schoolArt')),
+      school: await this._loadImg(State.get('schoolArt')),   // 🎨 도구화 3-3 '나의 학교'
+      noah: await this._loadImg(State.get('noahArt')),       // 🤖 존중 5-3 '노아와 함께 있는 나의 모습'
       sig: await this._loadImg(State.get('signature')),
     };
 
@@ -511,8 +576,10 @@ const Endings = {
     //  — 이전엔 캔버스 하단에서부터 역산해 배지와 날짜 사이에 불필요하게 큰 여백이 생겼었음)
     const GAP_AFTER_BODY = 56;
     const dateY = contentEndY + GAP_AFTER_BODY;
-    const nameY = dateY + 52;
-    const H = Math.ceil(nameY) + 46;
+    // ✍ 서명은 이름 오른쪽에 소형(150px) 배치 — 하단 여백은 서명 아래끝까지 커버
+    const sigW = 150;
+    const sigH = media.sig ? sigW * media.sig.height / media.sig.width : 0;
+    const H = Math.ceil(dateY + Math.max(52, sigH / 2 + 30)) + 46;
 
     // ── 2패스: 정확한 크기로 실제 그리기 ──
     const c = document.createElement('canvas');
@@ -527,13 +594,21 @@ const Endings = {
 
     this._drawCharterBody(x, W, ed, media);
 
-    // 하단 — 날짜·이름을 분리해 각각 라벨과 함께 표기
+    // 하단 — 날짜·이름 + 이름 오른쪽에 소형 서명 (문서에 '사인'하듯 얹힌다)
     x.fillStyle = '#7c4a03';
     x.font = 'bold 29px Jua, sans-serif';
     x.textAlign = 'right';
     x.fillText(`날짜: ${new Date().toLocaleDateString('ko-KR')}`, W / 2 - 20, dateY);
-      x.textAlign = 'left';
-    x.fillText(`이름: ${State.get('name')}`, W / 2 + 20, dateY);
+    x.textAlign = 'left';
+    const nameTxt = `이름: ${State.get('name')}`;
+    x.fillText(nameTxt, W / 2 + 20, dateY);
+    if (media.sig) {
+      const sx = Math.min(W / 2 + 20 + x.measureText(nameTxt).width + 18, W - 60 - sigW);
+      const sy = dateY - 10 - sigH / 2;                     // 텍스트 라인 중심에 세로 정렬
+      x.drawImage(media.sig, sx, sy, sigW, sigH);
+      x.strokeStyle = '#e8a33d'; x.lineWidth = 2;
+      this._roundRectPath(x, sx, sy, sigW, sigH, 8); x.stroke();
+    }
 
     const url = c.toDataURL('image/png');
     return new Promise(resolve => {

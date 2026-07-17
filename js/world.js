@@ -204,7 +204,9 @@ const World = {
     return p;
   },
   addZone(x, z, r, label, onInteract, auto = false) {
-    this.zones.push({ x, z, r, label, onInteract, auto, used: false });
+    const zone = { x, z, r, label, onInteract, auto, used: false };
+    this.zones.push(zone);
+    return zone;   // 호출측에서 used=true로 비활성화 가능 (예: 떠난 NPC의 대화 존)
   },
   setBeacon(x, z) {
     this.clearBeacon();

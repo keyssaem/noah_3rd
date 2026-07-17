@@ -44,13 +44,16 @@ const UI = {
   dialogue(lines) {
     return new Promise(async resolve => {
       this.show(this.els.dlgBox);
+      // ⚠ 무조건 true로 되돌리지 않고 이전 상태 복원 — 컷씬(잠금) 중간의 대사가
+      //   플레이어 이동/F키를 되살려 클로즈업·팝업 뒤로 조작되는 버그 방지
+      const wasEnabled = Player.enabled;
       Player.enabled = false;
       for (const line of lines) {
         await this.showLine(line);
       }
       Settings.stopSpeak();                    // 🗣️ 대화 종료 시 읽기 중단
       this.hide(this.els.dlgBox);
-      Player.enabled = true;
+      Player.enabled = wasEnabled;
       resolve();
     });
   },

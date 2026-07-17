@@ -35,7 +35,14 @@ const Player = {
     Sound.jump();
   },
 
+  /* 연출·UI 진행 중 여부 — 클로즈업(camLock)이나 팝업(오버레이)이 떠 있으면
+     상호작용(F 프롬프트·F키)을 잠근다. 클로즈업 해제(clearFocus)·팝업 닫힘과 함께 자동 복구 */
+  uiBusy() {
+    return !!this.camLock || UI.els.overlayRoot.childElementCount > 0;
+  },
+
   tryInteract() {
+    if (this.uiBusy()) return;
     if (this.nearZone && this.nearZone.onInteract) {
       const z = this.nearZone;
       this.nearZone = null;
@@ -134,18 +141,19 @@ const Player = {
       if (Math.hypot(dx, dy, dz) < 1.3) this.collectItem(it);
     }
 
-    // 상호작용 존 체크
+    // 상호작용 존 체크 — 클로즈업·팝업 중(uiBusy)에는 프롬프트를 내리고 F를 잠근다
+    const busy = this.uiBusy();
     let near = null;
-    for (const z of World.zones) {
+    if (!busy) for (const z of World.zones) {
       if (z.used) continue;
       if (Math.hypot(this.pos.x - z.x, this.pos.z - z.z) < z.r) { near = z; break; }
     }
-    if (this.enabled && near !== this.nearZone) {
+    if (this.enabled && !busy && near !== this.nearZone) {
       this.nearZone = near;
       UI.setPrompt(near ? near.label : null);
       if (near && near.auto) { near.used = true; this.tryInteract(); }
     }
-    if (!this.enabled && this.nearZone) { this.nearZone = null; UI.setPrompt(null); }
+    if ((!this.enabled || busy) && this.nearZone) { this.nearZone = null; UI.setPrompt(null); }
 
     // 캐릭터 반영 — 정지 상태에서 출발할 땐 즉시 방향 전환(피벗 잔동작 제거),
     // 이동 중 방향 전환은 빠른 회전(초당 18)으로 짧게

@@ -1,5 +1,6 @@
 /* ═══════════ FX — 공통 연출 인프라 (P2-0) ═══════════
-   컨페티·흔들림·플래시·비네트·컷씬 스틸 뷰어 + 신스 효과음(심박/웅성/휙/불협화음/팡파레).
+   컨페티·흔들림·플래시·CRT 파워오프/온·비네트·컷씬 스틸 뷰어
+   + 신스 효과음(심박/웅성/환호/휙/스태틱/배트크랙/불협화음/팡파레).
    외부 라이브러리 0 (컨페티 자체 구현, 사운드는 WebAudio 합성 — 파일 없음).
    접근성: 시각 연출은 UI.motionOK() 게이트, 소리는 Sound.sfxOn 게이트를 존중한다. */
 const FX = {
@@ -77,6 +78,54 @@ const FX = {
     document.getElementById('app').appendChild(d);
     requestAnimationFrame(() => { d.style.opacity = '0'; });
     setTimeout(() => d.remove(), ms + 100);
+  },
+
+  /* ═══ 📺 CRT 파워오프/온 — 브라운관 종료·기동 (4단계 반전 2막 '진짜 꺼짐' ↔ 재부팅 성공) ═══
+     crtOff(): 위아래 검은 패널이 닫히고 중앙 라인이 점으로 수축 → 완전 암전.
+               스태틱 3연발 뒤 소리까지 뚝 — hold(ms)만큼 정적을 유지하고 암전막을 남긴다.
+     blackHold(): 연출 없이 즉시 암전막만 세운다 (장면 전환 가리개). blackRelease()로 제거.
+     crtOn(): 암전막 위에서 점 → 라인 → 화면 확장으로 켜지며 심박 1박 — "노아가 다시 돌아온다". */
+  _crtHold: null,
+  blackHold() {
+    if (!this._crtHold) {
+      this._crtHold = document.createElement('div');
+      this._crtHold.className = 'fx-crt-hold';
+      document.getElementById('app').appendChild(this._crtHold);
+    }
+    return this._crtHold;
+  },
+  blackRelease() {
+    const el = this._crtHold; this._crtHold = null;
+    if (el) el.remove();
+  },
+  async crtOff({ hold = 1500 } = {}) {
+    this.staticBurst(3);                       // 지지직 3연발 → 뚝(무음)
+    if (UI.motionOK()) {
+      const d = document.createElement('div');
+      d.className = 'fx-crt off';
+      d.innerHTML = '<div class="crt-top"></div><div class="crt-bot"></div><div class="crt-line"></div><div class="crt-black"></div>';
+      document.getElementById('app').appendChild(d);
+      await UI.wait(850);                      // 수축 → 점 → 소멸
+      this.blackHold();                        // 완전 암전 유지막으로 교체
+      d.remove();
+    } else {
+      this.blackHold();
+    }
+    await UI.wait(hold);                       // 정적 — 교실이 조용해지는 시간
+    return this._crtHold;
+  },
+  async crtOn() {
+    this.blackHold();                          // 막이 없었다면 만들어서라도 (안전)
+    if (!UI.motionOK()) { this.heartbeat(1); await UI.wait(400); this.blackRelease(); return; }
+    const d = document.createElement('div');
+    d.className = 'fx-crt on';
+    d.innerHTML = '<div class="crt-top"></div><div class="crt-bot"></div><div class="crt-line"></div>';
+    document.getElementById('app').appendChild(d);
+    this.blackRelease();                       // 검은 패널 2장이 암전을 그대로 이어받는다
+    await UI.wait(500);                        // 점 → 라인
+    this.heartbeat(1);                         // 💓 화면이 열리는 순간 심박 1박
+    await UI.wait(500);
+    d.remove();
   },
 
   /* ═══ 🌑 비네트 — 화면 가장자리를 어둡게 (긴장 연출) on/off ═══ */
@@ -191,6 +240,27 @@ const FX = {
 
   /* 💨 휙 — 카드 흡수·이동 */
   whoosh() { this._noise(0.45, { type: 'lowpass', freq: 1300, vol: 0.25 }); },
+
+  /* 📺 지지직 — 스태틱 노이즈 버스트 (CRT 종료 직전, n연발 뒤 뚝 끊긴다) */
+  staticBurst(n = 3) {
+    for (let i = 0; i < n; i++)
+      this._noise(0.13, { type: 'highpass', freq: 2200, q: 0.8, vol: 0.28, when: i * 0.2 });
+  },
+
+  /* 🏏 딱! — 배트 크랙 (티볼 타격 순간) */
+  batCrack() {
+    this._noise(0.08, { type: 'highpass', freq: 2000, q: 1.1, vol: 0.32 });
+    Sound.tone(190, 0.1, 'square', 0.2);
+    Sound.tone(95, 0.16, 'sine', 0.28, 0.015);
+  },
+
+  /* 🎉 와아! — 환호 (murmur의 밝은 변형: 높은 대역 노이즈 파동 + 상승 톤 2개) */
+  crowd() {
+    for (let i = 0; i < 6; i++)
+      this._noise(0.34, { freq: 600 + Math.random() * 600, q: 1.6, vol: 0.12, when: i * 0.13 });
+    Sound.tone(523, 0.18, 'triangle', 0.14, 0.15);
+    Sound.tone(659, 0.22, 'triangle', 0.12, 0.3);
+  },
 
   /* ⚠ 불협화음 — 데이터 오염 순간 */
   sting() {

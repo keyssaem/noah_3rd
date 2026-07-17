@@ -307,6 +307,51 @@ textarea.ov-input { min-height:90px; resize:none; text-align:left; }
 @keyframes errBlink { 50%{opacity:.15;} }
 .sys-error .err-sub { color:#ff8888; font-size:clamp(15px,2.6vw,22px); font-family:monospace; }
 
+/* ═══ 📺 CRT 파워오프/온 (FX.crtOff / FX.crtOn / FX.blackHold) ═══
+   광과민 배려 — 중앙 라인은 순백 대신 옅은 블루그레이 + 절제된 글로우 */
+.fx-crt-hold { position:absolute; inset:0; background:#000; z-index:97; pointer-events:none; }
+.fx-crt { position:absolute; inset:0; z-index:97; pointer-events:none; }
+.fx-crt .crt-top, .fx-crt .crt-bot { position:absolute; left:0; width:100%; height:50.5%; background:#000; }
+.fx-crt .crt-top { top:0; transform-origin:top; }
+.fx-crt .crt-bot { bottom:0; transform-origin:bottom; }
+.fx-crt .crt-line { position:absolute; left:0; top:50%; width:100%; height:4px; margin-top:-2px; border-radius:3px;
+  background:#cdd9f5; opacity:0;
+  box-shadow:0 0 16px rgba(180,200,255,.75), 0 0 40px rgba(150,180,255,.45); }
+.fx-crt .crt-black { position:absolute; inset:0; background:#000; opacity:0; }
+/* 종료: 위아래 패널이 닫히고 → 중앙 라인이 점으로 수축 → 소멸 → 완전 암전 */
+.fx-crt.off .crt-top, .fx-crt.off .crt-bot { transform:scaleY(0); animation:crtClose .3s .05s ease-in forwards; }
+.fx-crt.off .crt-line { animation:crtLineOff .8s ease-in forwards; }
+.fx-crt.off .crt-black { animation:crtBlackIn .15s .66s forwards; }
+@keyframes crtClose { to{ transform:scaleY(1); } }
+@keyframes crtLineOff {
+  0%{ opacity:0; transform:scaleX(1); }
+  28%{ opacity:.92; transform:scaleX(1); }
+  60%{ opacity:.95; transform:scaleX(.004); }
+  76%{ opacity:.8; transform:scaleX(.004); }
+  100%{ opacity:0; transform:scaleX(.004); } }
+@keyframes crtBlackIn { to{ opacity:1; } }
+/* 기동(역재생): 점 → 라인 확장 → 패널이 열리며 화면이 돌아온다 */
+.fx-crt.on .crt-top, .fx-crt.on .crt-bot { transform:scaleY(1); animation:crtOpen .38s .52s ease-out forwards; }
+.fx-crt.on .crt-line { animation:crtLineOn .9s ease-out forwards; }
+@keyframes crtOpen { to{ transform:scaleY(0); } }
+@keyframes crtLineOn {
+  0%{ opacity:0; transform:scaleX(.004); }
+  20%{ opacity:.92; transform:scaleX(.004); }
+  55%{ opacity:.95; transform:scaleX(1); }
+  100%{ opacity:0; transform:scaleX(1); } }
+
+/* ═══ 🖥 재부팅 터미널 (Endings.bootSequence) — 검은 화면, 초록 모노스페이스 타이핑 ═══ */
+.boot-ov { background:#000; cursor:default; }
+.boot-term { width:min(680px,92vw); font-family:'Consolas','Courier New',monospace; text-align:left; }
+.boot-line { color:#69db7c; font-size:clamp(15px,2.6vw,22px); line-height:1.9; min-height:1.9em;
+  text-shadow:0 0 10px rgba(105,219,124,.55); word-break:break-all; white-space:pre-wrap; }
+.boot-line .fail { color:#ff6b6b; text-shadow:0 0 10px rgba(255,107,107,.6); font-weight:bold; }
+.boot-cursor { display:inline-block; width:.6em; height:1.15em; vertical-align:-0.18em;
+  background:#69db7c; margin-left:2px; animation:bootBlink .85s steps(1) infinite;
+  box-shadow:0 0 10px rgba(105,219,124,.7); }
+@keyframes bootBlink { 50%{ opacity:0; } }
+@media (prefers-reduced-motion: reduce) { .boot-cursor { animation:none; } }
+
 /* 게이지 (친밀도/도구화/존중) */
 .stat-row { margin:14px auto; max-width:520px; text-align:left; }
 .stat-label { color:#fff; font-size:clamp(16px,2.6vw,23px); margin-bottom:6px; display:flex; justify-content:space-between; }
@@ -663,6 +708,82 @@ body.fs-xlarge #quest-text { font-size:clamp(18px,2.9vw,25px) !important; }
   animation:stgFive 1s ease; filter:drop-shadow(0 0 14px rgba(255,224,102,.8)); }
 @keyframes stgFive { from{ transform:translate(-50%,-30%) scale(.2); opacity:0; }
   55%{ transform:translate(-50%,-60%) scale(1.4); } }
+
+/* ═══════════ 💠 노아의 진심 회로 (P3 — noahConfession[0]~[1] 대체) ═══════════
+   사람↔노아 대비 패널이 자체 perspective로 회전 등장, 항목이 하나씩 점등
+   ([4]의 거울 샷은 3D 카메라 연출 — episodes.respect5, CSS 불필요)
+   ⚠ 노아 가슴 불빛 계열 연출은 사용하지 않음 (기각된 아이디어) */
+.tc-ov { background:#0b1020; }
+.tc-stage { position:relative; width:100%; height:100%; display:flex; flex-direction:column;
+  align-items:center; gap:8px; padding:10px 12px;
+  background:radial-gradient(1200px 500px at 50% -10%, #1a2550, #0b1020 70%); }  /* di와 같은 색 언어 */
+.tc-hud { width:100%; display:flex; justify-content:center; }
+.tc-chip { background:rgba(10,14,22,.72); color:#8fd0ff; border-radius:10px; padding:8px 18px;
+  font-size:clamp(14px,2vw,22px); letter-spacing:1px; }
+.tc-cap { min-height:3em; max-width:min(920px,98%); text-align:center; color:#e7ecff;
+  font-size:clamp(15px,2.3vw,26px); line-height:1.5; word-break:keep-all; }
+.tc-cap b { color:#ffd43b; }
+.tc-scenebox { flex:1; width:100%; min-height:0; display:flex; align-items:center; justify-content:center; }
+.tc-scene { position:relative; width:780px; height:470px; flex:none; }
+.tc-actor { position:absolute; transform:translate(-50%,-50%); font-size:56px; line-height:1;
+  filter:drop-shadow(0 4px 8px rgba(0,0,0,.5)); }
+.tc-noah { font-size:64px; }
+.tc-noah.center { font-size:76px; }
+/* 좌우 대비 패널 — 자체 perspective 회전 등장 (preserve-3d 불필요 → 구형기기 안전) */
+.tc-panel { position:absolute; top:160px; width:212px; border-radius:18px; padding:14px 16px;
+  background:rgba(255,255,255,.05); opacity:0;
+  transition:transform .75s cubic-bezier(.2,.9,.3,1.12), opacity .5s; }
+.tc-panel.human { left:64px; border:3px solid #ff8fab; transform:perspective(700px) rotateY(-84deg); transform-origin:left center; }
+.tc-panel.robot { right:64px; border:3px solid #4dabf7; transform:perspective(700px) rotateY(84deg); transform-origin:right center; }
+.tc-panel.in { transform:perspective(700px) rotateY(0); opacity:1; }
+.tc-ptitle { text-align:center; font-size:21px; margin-bottom:10px; font-weight:700; }
+.tc-panel.human .tc-ptitle { color:#ffa8c0; }
+.tc-panel.robot .tc-ptitle { color:#8fd0ff; }
+.tc-item { display:flex; gap:10px; align-items:center; color:#e7ecff; font-size:19px; line-height:1.35;
+  padding:9px 6px; border-radius:10px; opacity:.22; filter:grayscale(1);
+  transition:opacity .45s, filter .45s, background .45s; word-break:keep-all; }
+.tc-item span { font-size:26px; }
+.tc-item.lit { opacity:1; filter:none; background:rgba(255,255,255,.08); animation:tcLit .5s ease; }
+@keyframes tcLit { 40%{ transform:scale(1.06); } }
+@media (prefers-reduced-motion: reduce) {
+  .tc-panel { transition:none !important; }
+}
+
+/* ═══════════ 📚 일기 숙제 쌓임 무대 (P5 — mirror2_after[3] 지문 대체) ═══════════
+   밝은 오후 교실빛에서 시작 → 일기장 12묶음(24편)이 쌓일수록 어두워진다 */
+.dp-ov { background:#1a2038; }
+.dp-stage { position:relative; width:100%; height:100%; display:flex; flex-direction:column;
+  align-items:center; gap:8px; padding:10px 12px;
+  background:linear-gradient(#fff7e0, #ffe9c4 55%, #f3d9a8); }
+.dp-hud { width:100%; display:flex; justify-content:space-between; align-items:center;
+  position:relative; z-index:8; }
+.dp-chip { background:rgba(60,42,20,.78); color:#ffe9c4; border-radius:10px; padding:8px 18px;
+  font-size:clamp(13px,1.8vw,22px); }
+.dp-cap { min-height:2.5em; max-width:min(920px,98%); text-align:center; color:#5B4636;
+  background:rgba(255,255,255,.78); border-radius:14px; padding:8px 18px;
+  font-size:clamp(15px,2.3vw,26px); line-height:1.45; word-break:keep-all;
+  position:relative; z-index:8; }
+.dp-cap b { color:#e8590c; }
+.dp-dim { position:absolute; inset:0; background:#0b0d1a; opacity:0; z-index:5;
+  pointer-events:none; transition:opacity .5s ease; }   /* 캡션·HUD(z8)만 어둠 위에 남는다 */
+.dp-scenebox { flex:1; width:100%; min-height:0; display:flex; align-items:center; justify-content:center; }
+.dp-scene { position:relative; width:780px; height:470px; flex:none; }
+.dp-desk { position:absolute; left:390px; top:352px; width:340px; height:56px;
+  transform:translate(-50%,-50%); background:#a9744b; border:4px solid #7c5233; border-radius:12px;
+  box-shadow:0 10px 0 #5d3d24; }
+.dp-actor { position:absolute; transform:translate(-50%,-90%); font-size:44px; line-height:1; z-index:2;
+  filter:drop-shadow(0 4px 5px rgba(0,0,0,.35)); }
+.dp-noah { font-size:58px; }
+.dp-book { position:absolute; z-index:4; width:78px; text-align:center;
+  background:#fff3bf; border:3px solid #e8a33d; border-radius:10px;
+  padding:5px 2px 4px; font-size:20px; line-height:1.1; box-shadow:0 5px 0 #b97f1f; }
+.dp-book small { display:block; font-size:12px; color:#8a5d18; font-weight:700; }
+.dp-book.drop { transition:transform .34s cubic-bezier(.4,0,.9,.6); }   /* ease-in 낙하 (가속, 1.5배속) */
+.dp-spark { position:absolute; z-index:7; transform:translate(-50%,-50%); font-size:30px;
+  animation:dpSpark .9s ease forwards; pointer-events:none; }
+@keyframes dpSpark { 0%{ transform:translate(-50%,-50%) scale(.3); opacity:0; }
+  30%{ transform:translate(-50%,-80%) scale(1.2); opacity:1; }
+  100%{ transform:translate(-50%,-130%) scale(.9); opacity:0; } }
 
 /* ═══════════ 🧠 노아 두뇌 데이터 주입기 (CSS 3D · 이순신 장난) ═══════════ */
 .di-ov { background:#0b1020; }

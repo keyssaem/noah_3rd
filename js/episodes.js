@@ -38,7 +38,7 @@ const Flow = {
     Player.snapCamera();
     await UI.fadeIn();
     await UI.dialogue(DATA.dlg.wakeup);
-    Player.enabled = false;                    // 튜토리얼 동안 키보드 이동 방지 (대사 종료 시 자동 활성화되므로 재차 잠금)
+    Player.enabled = false;                    // 튜토리얼 동안 키보드 이동 방지 (대화는 이전 잠금 상태를 복원 — 안전용 재확인)
     await UI.tutorial();                       // 🎮 조작 안내 (첫 플레이 사용성)
     UI.quest('집 밖으로 나가 보세요! (빛나는 기둥으로 이동)');
     Player.enabled = true;
@@ -244,7 +244,8 @@ const Flow = {
     const d = Chars.donghyuk();
     World.addNPC(d, 12, -12, -Math.PI / 4);
     World.setBeacon(12, -12);
-    World.addZone(12, -12, 2.2, '동혁이와 대화하기', async () => {
+    const zone = World.addZone(12, -12, 2.2, '동혁이와 대화하기', async () => {
+      zone.used = true;                      // 동혁이가 떠난다 — F 프롬프트 재등장 방지
       await UI.dialogue(DATA.dlg.donghyukQuest1);
       World.removeNPC(d);
       this.step = 'toSchool';
@@ -386,7 +387,11 @@ if (noah.group.children.length > 0) {
   async mirror2() {
     await UI.dialogue(DATA.dlg.mirror2_intro);
     await Mini.mathBattle();
-    await UI.dialogue(DATA.dlg.mirror2_after);
+    // 📚 P5: 일기 숙제 쌓임 연출 — mirror2_after[3](일기장 쌓임 지문·must)을 무대의 자동 진행이 대체
+    // (⚠ mirror2_after 대사를 추가/삭제하면 아래 slice 경계 조정!)
+    await UI.dialogue(DATA.dlg.mirror2_after.slice(0, 3));   // 독백 → 동혁 "노아한테 시키자" → 학생들 "내 것도!"
+    await Mini.diaryPile();                                   // 📚 일기장 12묶음(24편)이 책상 위에 쌓인다
+    await UI.dialogue(DATA.dlg.mirror2_after.slice(4));      // 노아 "24편 작성 시작" → 씁쓸한 독백
     // 📚 데이터 편향 — 🧠 노아 두뇌 데이터 주입기 (CSS 3D): 동혁의 거짓 데이터를 막지 못하고 노아가 오염됨
     // (2-4 대사 다이어트 — 학습 선언·퀴즈·폭소·선생님 교정은 전부 주입기 안에서 연출.
     //  ⚠ bias1[2]·[4..10]과 bias1After[0..1]은 주입기가 대체 — 대사를 수정하면 아래 인덱스 조정!)
@@ -511,16 +516,16 @@ if (noah.group.children.length > 0) {
   /* ═══════ 5단계 시작 : 붉은 월드맵, 집에서 재시작 ═══════ */
   async startPhase2() {
     this.phase = 2; this.step = 'home2';
-    Sound.playBGM('media/bgm4_respect.mp3');   // 🎵 존중편 BGM (5단계 시작~엔딩까지 계속 반복)
     World.redMode = true;
     Player.clearFocus();                     // 🎥 반전 연출 카메라 포커스 해제
     UI.clearQuest();
     UI.setBond('respect', 1);                // 💙 존중 게이지로 전환 (1%부터 다시)
-    await UI.fadeOut();
+    FX.blackHold();                          // 7942 성공 직후 이미 암전 — 없으면 여기서 세운다
     World.build('home');
     Player.setPos(-1.5, 0, -1.5, Math.PI / 2);
     Player.snapCamera();
-    await UI.fadeIn();
+    await FX.crtOn();                        // 📺 점→라인→확장으로 화면이 켜진다 + 💓 심박 1박 — 노아가 다시 돌아온다
+    Sound.playBGM('media/bgm4_respect.mp3'); // 🎵 존중편 BGM (5단계 시작~엔딩까지 계속 반복)
     await UI.dialogue(DATA.dlg.wakeup2);
     UI.quest('집 밖으로 나가 보세요!');
     Player.enabled = true;
@@ -532,7 +537,8 @@ if (noah.group.children.length > 0) {
     const d = Chars.donghyuk();
     World.addNPC(d, -8, 8, -Math.PI / 4);
     World.setBeacon(-8, 8);
-    World.addZone(-8, 8, 2.2, '동혁이와 대화하기', async () => {
+    const zone = World.addZone(-8, 8, 2.2, '동혁이와 대화하기', async () => {
+      zone.used = true;                      // 동혁이가 떠난다 — F 프롬프트 재등장 방지
       await UI.dialogue(DATA.dlg.donghyukQuest2);
       World.removeNPC(d);
       this.step = 'toSchool2';
@@ -628,6 +634,11 @@ if (noah.group.children.length > 0) {
 
     await UI.dialogue(DATA.dlg.respect4_intro);
     await Mini.teamBuild();
+    // ⚾ 티볼 Lv.1 — 딱! → 환호 → 컨페티 한 박자. 화면 전환 없이 소리로만 "경기가 있었다"를 전한다
+    FX.batCrack();
+    await UI.wait(300);
+    FX.crowd(); FX.confetti({ y: 0.5, count: 90 });
+    await UI.wait(1000);
     await UI.dialogue(DATA.dlg.respect4_after);
     UI.setBond('respect', 80);               // 💙 거울4(존중) 완료
 
@@ -698,8 +709,27 @@ if (noah.group.children.length > 0) {
     // 노아의 자기 고백 — "저는 사람이 아니에요. 그런데도..." (탈의인화 + 도덕적 대우의 근거)
     // 🎥 카메라를 노아에게 밀어넣어 크게 잡고, 인정 클립(자동차형은 무시)으로 진심을 전한다
     this.noahMoment('idle', { dist: 2.7, height: 1.4, lookH: 1.15 });
-    await UI.dialogue(DATA.dlg.noahConfession);
-    this.noahRest();
+    // 💠 P3: noahConfession 연출화 — [0]~[1]은 대비 패널 무대가 대체, [2]~[5]는 대사 게이트 그대로.
+    //    [4]의 거울은 3D 카메라 연출: 카메라를 휙 반전해 '나 자신'을 바라보며 핵심 문장을 읽는다.
+    // ⚠ noahConfession 대사를 추가/삭제하면 아래 인덱스 조정!
+    await Mini.truthCircuit();                         // 대비 패널: 사람↔노아 ([0]~[1] 대체)
+    await UI.dialogue([DATA.dlg.noahConfession[2]]);   // 동혁 반문 — 갈등 비트는 말이 강함
+    FX.vignette(true);                                 // 🌑 감광 무드 — 조명 트윈 대신 비네트로
+    await UI.dialogue([DATA.dlg.noahConfession[3]]);   // 노아 "아니요! 그런데도..." (노아 클로즈업 유지)
+    // 🪞 거울 샷 — 플레이어를 노아 쪽으로 돌려세우고(벽 클리핑 방지 + '노아의 눈으로 나를 본다' 구도),
+    //    카메라를 휙 반전해 자기 자신을 조금 멀리서 바라보게 한다
+    const meG = Player.char.group;
+    if (this.noah) {
+      const p = this.noah.group.position;
+      const face = Math.atan2(p.x - meG.position.x, p.z - meG.position.z);
+      Player.yaw = face; meG.rotation.y = face;
+    }
+    Player.focusOn(meG, { snap: true, dist: 4.5, height: 1.7, lookH: 1.1 });
+    FX.whoosh();
+    await UI.dialogue([DATA.dlg.noahConfession[4]]);   // 핵심 문장 — 내 모습을 바라보며 읽는다
+    await UI.dialogue([DATA.dlg.noahConfession[5]]);   // 마무리 독백 — 거울 샷 유지한 채
+    FX.vignette(false);
+    this.noahRest();                                   // 카메라 복귀 + 노아 idle (입력은 이후 흐름이 관리)
 
     // ═══ 🪜 약속의 계단 — 9원칙 제목↔뜻 복습 등반 (기억 풍선 개편판) ═══
     await UI.dialogue(DATA.dlg.stairsIntro);

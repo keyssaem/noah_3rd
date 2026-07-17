@@ -14,7 +14,8 @@ const State = {
     ox2: '', ox2Reason: '',               // 6단계 O/X 재질문
     promises: [],                          // 나의 약속 3가지
     signature: '',                         // 서명 dataURL
-    schoolArt: '',                         // 존중편에서 직접 그린 '학교' 그림 dataURL (헌장에 삽입)
+    schoolArt: '',                         // 도구화(3-3) 미술에서 그린 '나의 학교' 그림 dataURL (헌장 왼쪽)
+    noahArt: '',                           // 존중(5-3) 미술에서 그린 '노아와 함께 있는 나의 모습' dataURL (헌장 오른쪽)
   },
 
   set(key, value) {

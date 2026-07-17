@@ -685,7 +685,7 @@ const Mini = {
       /* ── Phase 0 — 건강한 지식 확인: 3개를 모두 탭 (오염 전의 대비) ── */
       let checked = 0, injectStarted = false;
       const knows = [slot, ...minis];
-      setCap('먼저 노아의 지식을 확인해 보자 — 지식 카드 <b>3개를 모두 탭</b>! (0/3)');
+      setCap('먼저 노아의 지식을 확인해 보자 — 지식 카드 <b>3개를 모두 눌러보자</b>! (0/3)');
       const confirmKnow = k => {
         if (!k.classList.contains('chk')) return;
         k.classList.remove('chk');
@@ -719,7 +719,7 @@ const Mini = {
         dodge++; Sound.pop();
         shield.style.left = (70 + Math.random() * 620) + 'px';
         shield.style.top = (170 + Math.random() * 150) + 'px';
-        setCap(['🛡️ 앗! 버튼이 손을 <b>쏙</b> 피했다!', '🛡️ 이상해... 아무리 눌러도 막을 수가 없어!',
+        setCap(['🛡️ 앗! 버튼이 <b>쏙</b> 피했다!', '🛡️ 이상해... 아무리 눌러도 막을 수가 없어!',
           '🛡️ 버튼이 계속 도망간다...!'][Math.min(dodge - 1, 2)]);
         if (dodge >= 4) split();
       };
@@ -735,7 +735,7 @@ const Mini = {
         clearTimeout(autoT);
         shield.classList.add('gone');
         card.classList.add('hidden');
-        setCap('🤷‍♂️ 동혁: "진짜라니까~ 진짜래도~!" — 카드가 <b>분열</b>했다! <b>탭해서 터뜨려!</b>');
+        setCap('<b>노아에게 [잘못된 카드 데이터]가 접근하고 있어! 눌러서 없애보자!!</b>');
         Sound.error(); FX.vibrate(90);
         FRAG_POS.forEach((p, i) => {
           const f = document.createElement('div');
@@ -780,7 +780,7 @@ const Mini = {
         later(() => { minis[0].classList.remove('ok'); minis[0].classList.add('corrupt'); minis[0].textContent = '지구 = 둥글다 ⚠'; FX.sting(); }, 900);
         later(() => {
           minis[1].classList.remove('ok'); minis[1].classList.add('corrupt'); minis[1].textContent = '1 + 1 = 2 ⚠';
-          FX.sting(); setCap('오염이... <b>옆 지식까지</b> 번지고 있어!');
+          FX.sting(); setCap('잘못된 데이터를 알려주는 건 정말 무서운 거구나..');
         }, 1600);
         later(quiz, 3100);
       };
@@ -812,6 +812,95 @@ const Mini = {
         });
       };
       ov.querySelector('.di-done').onclick = () => { Sound.pop(); cleanup(); UI.close(ov); resolve(); };
+    });
+  },
+
+  /* ═══════ 📚 일기 숙제 쌓임 무대 (P5 — mirror2_after[3] 지문 대체) ═══════
+     밝은 시작(반짝+coin) → 일기장 12묶음(×2편=24편)이 CSS transform 낙하로 3열 쌓임
+     → 낙하음 하강 + 화면 점점 어두워짐 → 책더미가 노아·학생 도트를 가린다.
+     자동 진행이 must 게이트를 대신한다(스킵 불가). 낙하 애니메이션은 motionOK() 게이트 */
+  diaryPile() {
+    const W = 780, H = 470;
+    return new Promise(resolve => {
+      const ov = UI.overlay(`
+        <div class="dp-stage">
+          <div class="dp-dim"></div>
+          <div class="dp-hud">
+            <span class="dp-chip">🔔 쉬는 시간 — 노아의 책상</span>
+            <span class="dp-chip dp-count">📔 일기장 0편 / 24편</span>
+          </div>
+          <div class="dp-cap"></div>
+          <div class="dp-scenebox"><div class="dp-scene">
+            <div class="dp-actor dp-noah" style="left:390px; top:330px"><span>🤖</span></div>
+
+            <div class="dp-actor" style="left:585px; top:330px"><span>🤓</span></div>
+            <div class="dp-desk"></div>
+          </div></div>
+        </div>`, 'dp-ov');
+
+      const sceneBox = ov.querySelector('.dp-scenebox'), scene = ov.querySelector('.dp-scene');
+      const capEl = ov.querySelector('.dp-cap'), countEl = ov.querySelector('.dp-count');
+      const dimEl = ov.querySelector('.dp-dim');
+      const fit = () => {
+        const s = Math.min(sceneBox.clientWidth / W, sceneBox.clientHeight / H, 1.6) * 0.96;
+        scene.style.transform = `scale(${s})`;
+      };
+      window.addEventListener('resize', fit);
+      fit();
+      requestAnimationFrame(fit);
+      const cap = t => { capEl.innerHTML = t; };
+
+      const spark = (x, y) => {
+        const s = document.createElement('div');
+        s.className = 'dp-spark'; s.textContent = '✨';
+        s.style.left = x + 'px'; s.style.top = y + 'px';
+        scene.appendChild(s);
+        setTimeout(() => s.remove(), 950);
+      };
+
+      /* 묶음 1개 낙하 — 4열×3단, 아래 단부터 채운다 (i: 0~11) */
+      const dropBook = async i => {
+        const x = 285 + (i % 4) * 70, y = 396 - Math.floor(i / 4) * 46;
+        const rot = (Math.random() * 8 - 4).toFixed(1);
+        const b = document.createElement('div');
+        b.className = 'dp-book';
+        b.innerHTML = '📔<small>×2편</small>';
+        b.style.left = (x - 39) + 'px'; b.style.top = (y - 24) + 'px';
+        if (UI.motionOK()) {
+          b.style.transform = `translateY(-520px) rotate(${rot * 3}deg)`;
+          scene.appendChild(b);
+          setTimeout(() => { b.classList.add('drop'); b.style.transform = `rotate(${rot}deg)`; }, 30);
+          await UI.wait(360);                                  // 낙하(.34s) 완료 시점에 착지음 — 1.5배속
+        } else {
+          b.style.transform = `rotate(${rot}deg)`;             // 줄이기 설정: 즉시 배치
+          scene.appendChild(b);
+          await UI.wait(150);
+        }
+        if (i < 2) { Sound.coin(); spark(x, y - 46); }         // 처음엔 신나는 소리 + 반짝
+        else {
+          Sound.tone(640 - i * 36, 0.12, 'triangle', 0.16);    // 점점 낮아지는 착지음
+          if (i >= 8) { Sound.tone(95, 0.1, 'sine', 0.2, 0.02); FX.vibrate(25); }  // 묵직한 쿵
+        }
+        countEl.textContent = `📔 일기장 ${(i + 1) * 2}편 / 24편`;
+        dimEl.style.opacity = Math.max(0, i - 1) * 0.045;      // 3번째 묶음부터 점점 어두워진다 (최대 .45)
+      };
+
+      (async () => {
+        cap('✨ "노아 최고!" — 아이들이 <b>일기장</b>을 가져오기 시작한다!');
+        await UI.wait(1700);
+        for (let i = 0; i < 12; i++) {
+          if (i === 4) cap('...어? 일기장이 <b>계속, 계속</b> 쌓인다.');
+          if (i === 8) cap('(책더미가... 노아의 모습을 점점 가린다.)');
+          await dropBook(i);
+          await UI.wait(Math.max(40, 214 - i * 15));           // 갈수록 급해지는 리듬 (1.5배속)
+        }
+        await UI.wait(500);
+        cap('📚 <b>24편</b>. — 노아의 책상이, 일기장 산에 파묻혔다.');
+        await UI.wait(2400);
+        window.removeEventListener('resize', fit);
+        UI.close(ov);
+        resolve();
+      })();
     });
   },
 
@@ -1207,8 +1296,11 @@ const Mini = {
           <p class="ov-sub magnet-msg"></p>
         </div>`);
       // 색상·펜·지우개·전체지우기 공용 도구 (존중편 미술과 동일한 큰 캔버스 + 팔레트)
-      this._bindArtTools(ov, ov.querySelector('.my-art'), { color: '#343a40', size: 5, erasing: false });
+      const myCanvas = ov.querySelector('.my-art');
+      this._bindArtTools(ov, myCanvas, { color: '#343a40', size: 5, erasing: false });
       this.drawNoahArt(ov.querySelector('.noah-art'));
+      let drew = false;                                        // 한 획이라도 그렸을 때만 헌장에 실을 수 있게
+      myCanvas.addEventListener('pointerdown', () => { drew = true; }, { once: true });
       const myBtn = ov.querySelector('.my-btn'), noahBtn = ov.querySelector('.noah-btn'),
             msg = ov.querySelector('.magnet-msg'), cover = ov.querySelector('.noah-cover'),
             hint = ov.querySelector('.art-hint');
@@ -1227,7 +1319,12 @@ const Mini = {
       };
       myBtn.addEventListener('pointerenter', flee);
       myBtn.addEventListener('pointerdown', flee);
-      noahBtn.onclick = () => { if (noahBtn.disabled) return; Sound.chime(); stop(); UI.close(ov); resolve(); };
+      noahBtn.onclick = () => {
+        if (noahBtn.disabled) return;
+        // 🎨 제출은 노아의 그림이지만, 내가 그린 '나의 학교'는 남겨둔다 — 헌장(⑧)에서 되살아난다
+        if (drew) State.set('schoolArt', myCanvas.toDataURL('image/png'));
+        Sound.chime(); stop(); UI.close(ov); resolve();
+      };
       const stop = this.startTimer(ov.querySelector('.art-timer'), T.total, T.enable,
         () => {                                    // 1분 남음: 제출 버튼 + 도망 연출 활성화 + 노아 그림 공개
           active = true; myBtn.disabled = false; noahBtn.disabled = false;
@@ -1268,7 +1365,7 @@ const Mini = {
       let submitted = false;
       const submit = () => {
         if (submitted) return; submitted = true; stop();
-        State.set('schoolArt', canvas.toDataURL('image/png'));   // 🖼️ 헌장에 실을 그림 저장 (⑧ 의존)
+        State.set('noahArt', canvas.toDataURL('image/png'));   // 🖼️ '노아와 함께 있는 나의 모습' — 헌장 오른쪽 (⑧ 의존)
         Sound.win(); UI.hearts(5); UI.close(ov); resolve();
       };
       doneBtn.onclick = () => { if (!doneBtn.disabled) submit(); };
@@ -1397,6 +1494,74 @@ const Mini = {
           : '🤖 "여러분이 서로 이야기하며 정한 팀이라서, 그 어떤 계산보다 훌륭합니다!"';
         setTimeout(() => { UI.close(ov); resolve(); }, 2300);
       };
+    });
+  },
+
+  /* ═══════ 💠 노아의 진심 회로 (P3 — noahConfession[0]~[1] 대체) ═══════
+     사람↔노아 대비 패널이 회전 등장, 항목이 하나씩 점등. 자동 진행이 게이트를 대신한다(스킵 불가).
+     이어지는 [2]~[5]는 대사 게이트 그대로 — [4]의 거울 샷은 3D 카메라 연출(episodes.respect5 참조).
+     ⚠ 노아 가슴 불빛 계열 연출은 쓰지 않는다 (기각된 아이디어) */
+  truthCircuit() {
+    const W = 780, H = 470;
+    const esc = s => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    const name = esc(State.get('name') || '친구');
+
+    return new Promise(resolve => {
+      const inner = `<div class="tc-actor tc-noah center" style="left:390px; top:300px"><span>🤖</span></div>
+           <div class="tc-panel human">
+             <div class="tc-ptitle">👥 사람</div>
+             <div class="tc-item"><span>❤️</span> 감정을 느낀다</div>
+             <div class="tc-item"><span>💔</span> 아픔을 안다</div>
+           </div>
+           <div class="tc-panel robot">
+             <div class="tc-ptitle">🤖 노아</div>
+             <div class="tc-item"><span>🔢</span> 계산한다</div>
+             <div class="tc-item"><span>🔌</span> 전원이 꺼져도<br>아프지 않다</div>
+           </div>`;
+
+      const ov = UI.overlay(`
+        <div class="tc-stage">
+          <div class="tc-hud"><span class="tc-chip">💠 노아의 진심 회로</span></div>
+          <div class="tc-cap"></div>
+          <div class="tc-scenebox"><div class="tc-scene">${inner}</div></div>
+        </div>`, 'tc-ov');
+
+      const sceneBox = ov.querySelector('.tc-scenebox'), scene = ov.querySelector('.tc-scene');
+      const capEl = ov.querySelector('.tc-cap');
+      const fit = () => {
+        const s = Math.min(sceneBox.clientWidth / W, sceneBox.clientHeight / H, 1.6) * 0.96;
+        scene.style.transform = `scale(${s})`;
+      };
+      window.addEventListener('resize', fit);
+      fit();
+      requestAnimationFrame(fit);
+      const cap = t => { capEl.innerHTML = t; };
+
+      (async () => {
+        // ── 대비 — "저는 사람이 아닙니다" (말 대신 좌우 패널의 시각 대비로)
+        cap(`🤖 "${name}님, 그리고 친구들. 오늘 저를 따뜻하게 대해주셔서 감사합니다.<br>하지만... 한 가지만, 꼭 기억해 주세요."`);
+        await UI.wait(3200);
+        cap('🤖 "저는... <b>사람이 아닙니다</b>."');
+        FX.whoosh();
+        ov.querySelectorAll('.tc-panel').forEach(p => p.classList.add('in'));
+        await UI.wait(1900);
+        const human = ov.querySelectorAll('.tc-panel.human .tc-item');
+        const robot = ov.querySelectorAll('.tc-panel.robot .tc-item');
+        cap('사람은 — <b>느끼고</b>, 아픔을 압니다.');
+        human[0].classList.add('lit'); Sound.chime();
+        await UI.wait(850);
+        human[1].classList.add('lit'); Sound.chime();
+        await UI.wait(1600);
+        cap('🤖 "저는 기쁨을 <b>느끼는</b> 것이 아니라, <b>계산</b>합니다."');   // 차가운 하강음으로 대비
+        robot[0].classList.add('lit'); Sound.tone(220, 0.16, 'square', 0.12);
+        await UI.wait(1700);
+        cap('🤖 "사실... <b>전원이 꺼져도</b>, 저는 아프지 않아요."');
+        robot[1].classList.add('lit'); Sound.tone(165, 0.22, 'square', 0.12);
+        await UI.wait(2700);
+        window.removeEventListener('resize', fit);
+        UI.close(ov);
+        resolve();
+      })();
     });
   },
 
