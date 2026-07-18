@@ -342,7 +342,6 @@ const DevMode = {
   glbViewer() {
     const models = [
       ['playerM', '👦 남자 주인공'], ['playerF', '👧 여자 주인공'], ['teacher', '🧑‍🏫 선생님'],
-      ['friendM', '🧒 남자 친구'], ['friendF', '👧 여자 친구'],
       ['noahHuman', '🤖 노아 인간'], ['noahAnimal', '🐱 노아 동물'], ['noahCar', '🚗 노아 자동차'],
     ];
     const ov = UI.overlay(`

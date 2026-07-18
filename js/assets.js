@@ -4,14 +4,12 @@
    - 로드 실패해도 던지지 않음: 호출측이 박스 캐릭터로 폴백 (구형기기 안정성 우선) */
 const Assets = {
   MODELS: {
-    playerM:  'media/glb/player_boy.glb',
-    playerF:  'media/glb/player_girl.glb',
-    teacher:  'media/glb/teacher.glb',
-    friendM:  'media/glb/friend_boy.glb',
-    friendF:  'media/glb/friend_girl.glb',
-    noahHuman:'media/glb/noah_human.glb',
-    noahAnimal:'media/glb/noah_animal.glb',
-    noahCar:  'media/glb/noah_car.glb',
+    playerM:  'media/image/player_boy.glb',
+    playerF:  'media/image/player_girl.glb',
+    teacher:  'media/image/teacher.glb',
+    noahHuman:'media/image/noah_human.glb',
+    noahAnimal:'media/image/noah_animal.glb',
+    noahCar:  'media/image/noah_car.glb',
   },
 
   _cache: {},          // name → gltf (scene + animations)
@@ -82,8 +80,8 @@ const Assets = {
     if (location.protocol === 'file:')
       return '⚠ 파일을 직접 열었어요(file://). 3D 모델은 로컬 서버로 실행해야 보여요 — 폴더에서 "npx http-server -p 8347" 실행 후 localhost:8347 접속!';
     if (!this.supported())
-      return '⚠ GLTF 로더를 못 불러왔어요. 인터넷 연결을 확인하고, 브라우저를 강력 새로고침(Ctrl+Shift+R) 해보세요.';
-    return '⚠ 모델 파일을 불러오지 못했어요 (' + (this._lastError || '알 수 없음') + '). media/glb 폴더와 파일명을 확인하세요.';
+      return '⚠ GLTF 로더를 못 불러왔어요. 브라우저를 강력 새로고침(Ctrl+Shift+R) 하고, js/vendor 폴더가 있는지 확인하세요.';
+    return '⚠ 모델 파일을 불러오지 못했어요 (' + (this._lastError || '알 수 없음') + '). media/image 폴더와 파일명을 확인하세요.';
   },
 
   /* 여러 GLB를 진행바와 함께 로드 → 성공 개수 반환 (전체 실패해도 게임은 진행) */

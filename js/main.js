@@ -17,9 +17,9 @@
 
   /* ───── 🎬 인트로 영상(15초, 건너뛰기는 10초부터 표시) → 1-2 메인 메뉴(BGM 시작) ───── */
   (async () => {
-    await UI.playVideo('media/intro.mp4', { skip: true, skipDelay: 10000 });
+    await UI.playVideo('media/movie/intro.mp4', { skip: true, skipDelay: 10000 });
     UI.show(UI.els.menu);
-    Sound.playBGM('media/bgm.mp3');
+    Sound.playBGM('media/sound/bgm.mp3');
   })();
 
   document.getElementById('btn-start').addEventListener('click', async () => {

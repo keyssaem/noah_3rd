@@ -218,7 +218,7 @@ const Mini = {
           drawScanOverlay();
         };
         img.onerror = drawFallback;
-        img.src = 'media/temporary_files/' + (State.get('gender') === 'f' ? 'face_scan_female.PNG' : 'face_scan_male.PNG');
+        img.src = 'media/image/' + (State.get('gender') === 'f' ? 'face_scan_female.PNG' : 'face_scan_male.PNG');
       }
       const log = ov.querySelector('.scan-log');
       const logs = [
@@ -1261,7 +1261,7 @@ const Mini = {
       x.drawImage(img, sx, sy, sw, sh, 0, 0, cw, ch);
     };
     img.onerror = fallback;
-    img.src = 'media/temporary_files/noah_drawing.png';
+    img.src = 'media/image/noah_drawing.png';
   },
 
   /* ═══════ 3-3 미술: 자석처럼 끌리는 선택지 (2분 타이머 · 1분 후 제출·도망 · 종료 시 노아 그림 공개) ═══════ */

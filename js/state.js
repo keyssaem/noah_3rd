@@ -32,7 +32,10 @@ const State = {
   },
 
   reset() {
-    try { localStorage.removeItem('noah_save'); } catch (e) {}
+    try {
+      localStorage.removeItem('noah_save');
+      localStorage.removeItem('noah_notebook_all');
+    } catch (e) {}
   },
 
   /* ───── 📔 도덕 수첩 ───── */

@@ -29,7 +29,7 @@ kbd { background:#fff; border:2px solid #cbd5e1; border-bottom-width:4px; border
 .screen { position:absolute; inset:0; z-index:50; display:flex; align-items:center; justify-content:center; }
 
 /* ─── 메인 메뉴 (작화 배경: 교수님과 노아 3총사가 중앙 — UI는 오른쪽 배치) ─── */
-#menu-screen { background:#2a1c0e url('../media/main-bg.jpg') center/cover no-repeat;
+#menu-screen { background:#2a1c0e url('../media/image/main-bg.jpg') center/cover no-repeat;
   overflow:hidden; justify-content:flex-end; }
 .menu-sky { display:none; }   /* 이모지 구름은 작화 배경과 충돌 → 숨김 */
 .menu-inner { text-align:center; z-index:2; padding:26px 28px; margin-right:1.5vw;

@@ -4,8 +4,8 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <title>AI 전학생 '노아'와 함께하는 공존·상생 프로젝트</title>
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Jua&family=Gowun+Dodum&display=swap" rel="stylesheet">
+<!-- 셀프호스트 폰트 (Jua·Gowun Dodum, OFL) — 오프라인에서도 동일 서체 -->
+<link rel="stylesheet" href="css/fonts.css">
 <link rel="stylesheet" href="css/style.css">
 </head>
 <body>
@@ -110,10 +110,11 @@
   <div id="fade"></div>
 </div>
 
-<script src="https://unpkg.com/three@0.147.0/build/three.min.js"></script>
+<!-- Three.js r147 로컬 번들 (MIT) — CDN 의존 제거로 오프라인·학교망 순단에도 구동 -->
+<script src="js/vendor/three.min.js"></script>
 <!-- P3: GLB 로더 + 스킨메시 복제 유틸 (r147 examples/js 전역판, 무빌드 유지) -->
-<script src="https://unpkg.com/three@0.147.0/examples/js/loaders/GLTFLoader.js"></script>
-<script src="https://unpkg.com/three@0.147.0/examples/js/utils/SkeletonUtils.js"></script>
+<script src="js/vendor/GLTFLoader.js"></script>
+<script src="js/vendor/SkeletonUtils.js"></script>
 <script src="js/rendering.js"></script>
 <script src="js/data.js"></script>
 <script src="js/assets.js"></script>

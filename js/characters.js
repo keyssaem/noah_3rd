@@ -208,8 +208,6 @@ const Chars = {
     playerM:   { idle: 0, sit: 1, walk: 3, surprise: 4 },   // [2]둘러보기는 여자와 통일 위해 제외
     playerF:   { idle: 0, sit: 1, walk: 2, surprise: 4 },   // [3]인정하기는 제외
     teacher:   { look: 0 },
-    friendM:   { look: 0 },
-    friendF:   { look: 0 },
     noahHuman: { idle: 0, greet: 1, admit: 2, scared: 3 },
     noahAnimal:{ idle: 1, greet: 2, scared: 3 },            // [0] 미사용
     noahCar:   {},                                          // 정적

@@ -8,7 +8,7 @@ const World = {
 
   init(canvas) {
     this.renderer = Rendering.create({ canvas, antialias: true }, '메인 게임 화면');
-    this.renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+    this.renderer.setPixelRatio(Math.min(devicePixelRatio, 1.5));
     this.renderer.shadowMap.enabled = true;
     this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 

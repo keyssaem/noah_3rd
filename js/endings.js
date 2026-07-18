@@ -106,7 +106,7 @@ const Endings = {
     FX.blackRelease();   // 회상 화면이 선 뒤에야 암전막을 걷는다 — 월드가 한 프레임도 새지 않게
     await recall;
     // 🎬 회상 컷씬 — 교수님이 노아 셋을 만들던 날 (스킵 불가: 반전의 핵심)
-    await UI.playVideo('media/professor2.mp4');
+    await UI.playVideo('media/movie/professor2.mp4');
     await UI.bigText(DATA.dlg.professorLines, { bg: 'rgba(2,2,8,.98)', must: true });  // 📖 교수님 회상: 스킵 불가
 
     // 📔 도덕 수첩 회상 연동 — 수집 활동이 반전의 복선으로 회수된다
@@ -366,7 +366,7 @@ const Endings = {
     // 6-3 🎬 엔딩 영상 — 내가 고른 노아 디자인으로 분기 (인간형 / 그 외=동물·자동차형)
     //     로드 실패(파일 미배포·file://)해도 playVideo가 error→통과하므로 안전
     const endVid = State.get('noahDesign') === 'human' ? 'ending_human_ver.mp4' : 'ending_animal_ver.mp4';
-    await UI.playVideo('media/temporary_files/' + endVid, { skip: true, skipDelay: 5000 });
+    await UI.playVideo('media/movie/' + endVid, { skip: true, skipDelay: 5000 });   // ⚠ 폴더명은 media/movie (video 아님)
     // 6-4 쿠키 마무리 문구
     await UI.bigText(DATA.cookieLines, { bg: 'rgba(2,2,8,.98)' });
 
@@ -390,16 +390,17 @@ const Endings = {
 
     const fin = UI.overlay(`
       <div style="text-align:center;">
-        <img class="ending-noah" src="media/temporary_files/ending_noah_image.png" alt="노아"
+        <img class="ending-noah" src="media/image/ending_noah_image.png" alt="노아"
              style="width:min(340px,64vw); height:auto; margin-bottom:8px;"
              onerror="this.outerHTML='<div style=\\'font-size:90px\\'>🤖💙</div>'">
         <p style="color:#ffe066; font-size:clamp(16px,2.6vw,22px); margin-bottom:4px;">${ed.stamp} ${ed.title}</p>
         <h1 style="color:#fff; font-size:clamp(20px,4vw,35px); margin:10px 0 16px;"> 인공지능 로봇 <노아>와의 시뮬레이션 모험을 통하여, <br>
       로봇에 대한 <도덕적 태도>의 중요성을 이해하는 시간이 되었길 바라요.</h1>
         <h1 style="color:#ffe066;">
-                <노아>와 함께해줘서 진심으로 고마워요💌, ${State.get('name')}!</h1>
+                노아와 함께해줘서 진심으로 고마워요💌, ${State.get('name')}!</h1>
         <div class="ov-choices"><button class="choice-btn again">🏠 처음 화면으로</button></div>
       </div>`, 'bigtext-ov');
+    State.reset();   // 공용 기기에 학생 정보와 수첩 기록이 남지 않도록 엔딩 표시 후 전체 기록 삭제
     fin.querySelector('.again').onclick = () => location.reload();
   },
 
