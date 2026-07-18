@@ -226,7 +226,7 @@ const Mini = {
         `> 미소 지수: ${85 + Math.floor(Math.random() * 14)}%  😊`,
         `> 판정: 아주 멋진 얼굴입니다!`,
         '> 얼굴 데이터를 노아의 메모리에 저장 중... ■■■■■■■■■■ 100%',
-        '> ⚠ 저장 완료. 이 데이터는 삭제되지 않습니다.',
+        '> ⚠ 저장 완료. 이 데이터는 삭제될 예정입니다.',
       ];
       logs.forEach((l, i) => setTimeout(() => {
         log.textContent += l + '\n'; log.scrollTop = 9999; Sound.pop();

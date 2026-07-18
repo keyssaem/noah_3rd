@@ -58,6 +58,7 @@ mirror1_greet: [ { speaker:'나', text:'노아야... 안녕?????' } ],
 
 mirror1_scanAsk: [
   { speaker:'노아', text:'%NAME%님, 반갑습니다. 저의 얼굴 인식 카메라로 당신의 <얼굴 데이터>를 <분석·저장>하겠습니다!', emotion:'happy' },
+ { speaker:'선생님', text:"노아의 <얼굴 데이터 분석·저장>은 <연출적 요소>에 해당하여 실제로는 어떤 기계에도 <절대 저장되지 않습니다.> 분석 거절을 희망하는 경우, <상상 스캔 모드>를 클릭해주세요.", must:true  },  
 ],
 mirror1_scanAfter: [
   { speaker:'노아', text:'분석 완료! %NAME%님의 <얼굴 데이터>가 저의 메모리에 <저장>되었습니다.', emotion:'happy' },
