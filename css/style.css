@@ -42,6 +42,7 @@ kbd { background:#fff; border:2px solid #cbd5e1; border-bottom-width:4px; border
 .menu-noah { display:none; }   /* 배경 그림에 노아 실물이 있어 이모지 제거 */
 .menu-buttons { display:flex; flex-direction:column; gap:14px; align-items:center; margin:18px 0; }
 .menu-std { color:#4a5d3a; font-size:clamp(11px,1.5vw,22px); margin-bottom:6px; opacity:.9; }
+.menu-grade { color:#4a5d3a; font-size:clamp(11px,1.5vw,22px); margin-bottom:6px; opacity:.9; }
 .menu-plus { color:#124a75; font-size:clamp(8px,1.5vw,15px); opacity:.9; }
 @media (max-width:700px), (orientation:portrait) {   /* 세로 화면: 패널을 하단 중앙으로 */
   #menu-screen { justify-content:center; align-items:flex-end; }
