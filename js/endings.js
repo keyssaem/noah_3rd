@@ -399,6 +399,17 @@ const Endings = {
         <h1 style="color:#ffe066;">
                 노아와 함께해줘서 진심으로 고마워요💌, ${State.get('name')}!</h1>
         <div class="ov-choices"><button class="choice-btn again">🏠 처음 화면으로</button></div>
+<div style="margin:20px auto 0; padding-top:10px; max-width:min(680px,92vw);
+            border-top:1px solid rgba(255,255,255,.15);
+            color:rgba(255,255,255,.5); font-size:15px; line-height:1.65;
+            letter-spacing:-.2px; word-break:keep-all; text-align:center;">
+  <b style="color:rgba(255,255,255,.68);">사용한 자료와 출처</b><br>
+  글꼴 주아체·고운돋움 (SIL Open Font License 1.1) <br>
+  3D 엔진 three.js r147 · GLTFLoader · SkeletonUtils (MIT License) <br>
+  손 모양 인식 MediaPipe Tasks Vision 0.10.14 (Apache License 2.0) <br>
+  이미지 · 배경음악 · 영상 Google Gemini 생성 <br>
+  3D 캐릭터 모델 Google Gemini + Tripo AI 생성
+</div>
       </div>`, 'bigtext-ov');
     State.reset();   // 공용 기기에 학생 정보와 수첩 기록이 남지 않도록 엔딩 표시 후 전체 기록 삭제
     fin.querySelector('.again').onclick = () => location.reload();
