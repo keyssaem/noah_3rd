@@ -302,7 +302,7 @@ const DevMode = {
       <div class="ov-panel dev-panel">
         <button class="nb-close">✕</button>
         <div class="dev-header">
-          <span class="dev-badge">🛠 DEV MODE</span>
+          <span class="dev-badge">🛠 교사용 모드</span>
           <span class="dev-hint">수첩 버튼 5회 연속 클릭으로 진입</span>
         </div>
         <div class="dev-section">

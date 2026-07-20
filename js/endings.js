@@ -486,9 +486,8 @@ const Endings = {
     x.textAlign = 'center'; x.fillStyle = '#1971c2';
     const pledgeFont = 'bold 29px Jua, sans-serif';
     [
-      '나는 <인공지능 로봇 노아>와의 시뮬레이션 과정을 통하여,',
-      '인간과 로봇의 공존에 대한 <도덕적 태도>의 중요성을 인식하고,',
-      '위의 세 가지 약속을 성실히 이행할 것을 약속합니다.',
+      '나는 <인공지능 로봇 노아>와의 만남을 통해', '<도덕적 태도>의 중요성을 알게 되었으며',
+      '위의 세 가지 약속을 성실히 지킬 것을 다짐합니다.',
     ].forEach(line => {
       wrap(line, W - PAD * 2, pledgeFont).forEach(l => { x.fillText(l, W / 2, y); y += 46; });
     });
@@ -555,6 +554,39 @@ const Endings = {
       const title = media.school ? '🎨 나의 학교' : '🤖 노아와 함께 있는 나의 모습';
       y += imgCard(img, title, W / 2, 440, y) + 26;
     }
+
+    // ─── 📋 오늘의 배움 점검 — 헌장 하단(날짜·이름 라인 바로 위)에 자기평가 결과 인쇄 ───
+    //   교사가 헌장 한 장으로 학습목표 3가지의 도달 정도를 확인할 수 있게 한다.
+    //   ⚠ 미응답이면 ○○○로 표시.
+    //   ⚠ 측정(probe)·렌더 두 패스 모두 State에서 같은 값을 읽으므로 예약 높이가 일치한다.
+    const rubMark = { 3: '★★★', 2: '★★☆', 1: '★☆☆' };
+    const rubEval = State.get('selfEval') || [];
+    const rubL = PAD - 25, rubR = W - PAD + 25;      // 칭호 배지 카드와 같은 좌우 폭
+    const rubFont = '22px Jua, sans-serif';
+    const rubMarkFont = 'bold 22px Jua, sans-serif';
+    const RUB_NUM_W = 24, RUB_MARK_W = 78;           // 번호 칸 / 오른쪽 척도 칸
+
+    y += 34;
+    x.textAlign = 'left'; x.fillStyle = '#7c4a03'; x.font = 'bold 23px Jua, sans-serif';
+    x.fillText('[오늘의 배움 점검]', rubL, y);
+    y += 13;
+    x.strokeStyle = '#e8a33d'; x.lineWidth = 1.5;
+    x.beginPath(); x.moveTo(rubL, y); x.lineTo(rubR, y); x.stroke();
+    y += 28;
+
+    (DATA.rubricItems || []).forEach((q, i) => {
+      const qLines = wrap(q, rubR - rubL - RUB_NUM_W - RUB_MARK_W, rubFont);
+      const rowTop = y;
+      x.textAlign = 'left'; x.font = rubFont;
+      x.fillStyle = '#adb5bd'; x.fillText(String(i + 1), rubL, y);
+      x.fillStyle = '#495057';
+      qLines.forEach(l => { x.fillText(l, rubL + RUB_NUM_W, y); y += 27; });
+      x.textAlign = 'right'; x.font = rubMarkFont; x.fillStyle = '#7c4a03';
+      x.fillText(rubMark[rubEval[i]] || '○○○', rubR, rowTop);
+      y += 8;
+    });
+    y += 2;
+
     return y;
   },
 

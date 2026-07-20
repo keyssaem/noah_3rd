@@ -1273,7 +1273,7 @@ const Mini = {
           <h2 class="mini-title">🎨 미술 시간 — 제시어: '나의 학교'를 간단하게 표현해봅시다.</h2>
           <div class="art-timerbar"><span class="art-timer">⏱ 2:00</span>
             <span class="art-hint">먼저 <b>내 그림</b>을 그려 보세요! (1분 후 제출할 수 있어요)</span></div>
-          <p>✏️ 내가 그리는 그림</p>
+          <p>✏️ '나의 학교'를 간단하게 표현해봅시다.</p>
           <canvas class="draw-canvas my-art" width="640" height="380" style="width:min(640px,88vw);"></canvas>
           <div class="color-row">
             ${this.ART_COLORS.map(c => `<div class="color-dot" data-c="${c}" style="background:${c};"></div>`).join('')}
@@ -1610,6 +1610,57 @@ const Mini = {
   },
 
   /* ═══════ 나의 약속 3가지 선택 ═══════ */
+  /* ═══════ 📋 오늘의 배움 점검 — 학습목표 3가지 자기평가 (3점 척도) ═══════
+     반환: [3,2,3] 형태의 점수 배열. 결과는 약속 헌장 하단에 함께 인쇄된다.
+     ⚠ 문항 순서는 헌장(endings.js RUB_ITEMS) 및 보고서 학습목표와 1:1로 맞출 것. */
+  selfRubric() {
+    return new Promise(resolve => {
+      const items = DATA.rubricItems;
+      const scale = [
+           { v: 1, dot: '★☆☆', label: '더 배우고 싶어요' },    { v: 2, dot: '★★☆', label: '조금 더 하면 돼요' },
+        { v: 3, dot: '★★★', label: '잘할 수 있어요' },
+      ];
+      const picked = new Array(items.length).fill(0);
+      const ov = UI.overlay(`
+        <div class="ov-panel" style="max-width:min(760px,96vw);">
+          <h3 class="mini-title">📋 오늘의 배움 점검</h3>
+          <p class="ov-sub">오늘 배운 것을 <b>스스로</b> 평가해 보세요. 정답은 없어요!</p>
+          ${items.map((q, i) => `
+            <div class="rub-row" data-row="${i}">
+              <div class="rub-q"><span class="rnum">${i + 1}.</span>${q}</div>
+              <div class="rub-opts">${scale.map(s =>
+                `<button class="rub-btn" data-q="${i}" data-v="${s.v}"><span class="rdot">${s.dot}</span>${s.label}</button>`).join('')}</div>
+            </div>`).join('')}
+          <div class="ov-choices"><button class="choice-btn done" disabled>✅ 점검을 마칠게요! (0/${items.length})</button></div>
+        </div>`);
+      const doneBtn = ov.querySelector('.done');
+      const refresh = () => {
+        const n = picked.filter(v => v > 0).length;
+        doneBtn.disabled = n < items.length;
+        doneBtn.textContent = n < items.length
+          ? `✅ 점검을 마칠게요! (${n}/${items.length})`
+          : '✅ 점검을 마칠게요!';
+      };
+      ov.querySelectorAll('.rub-btn').forEach(btn => {
+        btn.onclick = () => {
+          const q = +btn.dataset.q;
+          picked[q] = +btn.dataset.v;
+          const row = ov.querySelector(`.rub-row[data-row="${q}"]`);
+          row.querySelectorAll('.rub-btn').forEach(b => b.classList.toggle('on', b === btn));
+          row.classList.add('answered');   // ⚠ 완료 버튼의 .done과 클래스가 겹치지 않게 별도 이름 사용
+          Sound.pop();
+          refresh();
+        };
+      });
+      doneBtn.onclick = () => {
+        if (doneBtn.disabled) return;
+        Sound.win();
+        UI.close(ov);
+        resolve(picked.slice());
+      };
+    });
+  },
+
   choosePromises() {
     return new Promise(resolve => {
       const sel = new Set();

@@ -13,6 +13,7 @@ const State = {
     ox1: '', ox1Reason: '',               // 3단계 O/X 질문
     ox2: '', ox2Reason: '',               // 6단계 O/X 재질문
     promises: [],                          // 나의 약속 3가지
+    selfEval: [],                          // 오늘의 배움 점검 — 학습목표 3문항 자기평가 (각 1~3점), 헌장 하단에 인쇄
     signature: '',                         // 서명 dataURL
     schoolArt: '',                         // 도구화(3-3) 미술에서 그린 '나의 학교' 그림 dataURL (헌장 왼쪽)
     noahArt: '',                           // 존중(5-3) 미술에서 그린 '노아와 함께 있는 나의 모습' dataURL (헌장 오른쪽)

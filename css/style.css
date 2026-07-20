@@ -509,6 +509,20 @@ body.fs-xlarge #quest-text { font-size:clamp(18px,2.9vw,25px) !important; }
 .promise-full { font-size:clamp(19px,3.4vw,27px); color:#343a40; line-height:1.65; word-break:keep-all;
   background:#fff9db; border:3px solid #ffe066; border-radius:16px; padding:22px 20px; margin:6px 0 4px; }
 
+/* 📋 오늘의 배움 점검 (자기평가 루브릭) */
+.rub-row { text-align:left; background:#f8f9fa; border:3px solid #dee2e6; border-radius:14px;
+  padding:12px 16px; margin:9px 0; transition:all .15s; }
+.rub-row.answered { background:#fff9db; border-color:#fab005; }
+.rub-q { font-size:clamp(14px,2.2vw,19px); color:#343a40; line-height:1.55; word-break:keep-all; margin-bottom:9px; }
+.rub-q .rnum { color:#fab005; margin-right:6px; font-weight:bold; }
+.rub-opts { display:flex; gap:7px; flex-wrap:wrap; }
+.rub-btn { flex:1 1 30%; min-width:118px; font-family:inherit; font-size:clamp(12px,1.8vw,16px);
+  background:#fff; border:2px solid #dee2e6; border-radius:10px; padding:9px 6px; cursor:pointer;
+  color:#495057; transition:all .15s; word-break:keep-all; line-height:1.35; }
+.rub-btn .rdot { display:block; font-size:1.15em; letter-spacing:2px; color:#adb5bd; }
+.rub-btn.on { background:#ffe066; border-color:#f59f00; color:#7c4a03; font-weight:bold; }
+.rub-btn.on .rdot { color:#e8590c; }
+
 /* 하트 파티클 */
 .heart-float { position:absolute; font-size:30px; animation:heartUp 1.6s ease-out forwards; pointer-events:none; z-index:90; }
 @keyframes heartUp { from{opacity:1; transform:translateY(0) scale(.6);} to{opacity:0; transform:translateY(-140px) scale(1.4);} }

@@ -750,6 +750,13 @@ if (noah.group.children.length > 0) {
       { speaker: '노아', text: `'${rel}'... 저장하지 않아도 잊을 수 없는 대답입니다. 그 마음을 헌장에 새겨 주세요!`, emotion: 'happy' },
     ]);
 
+    // 📋 오늘의 배움 점검 — 학습목표 3가지 자기평가 (헌장 하단에 함께 인쇄)
+    //    약속을 정하고 → 스스로 돌아보고 → 서명하는 순서. 반드시 헌장 생성(realEnding) 전에 저장할 것.
+    await UI.dialogue([
+      { speaker: '노아', text: '서명하기 전에, 오늘 배운 것을 스스로 한 번 돌아볼까요? 정답은 없어요!', emotion: 'happy' },
+    ]);
+    State.set('selfEval', await Mini.selfRubric());
+
     await Mini.signature();
     UI.setBond('respect', 100);              // 💙 존중 100% 달성!
     await UI.wait(1400);
