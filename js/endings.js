@@ -605,6 +605,20 @@ const Endings = {
     const ed = this._ending;
     const W = 1000;
 
+    // 🅵 폰트 준비 보장 — 헌장은 Canvas에 Jua·Gowun Dodum으로 그린다.
+    //   폰트가 아직 로드되지 않은 상태에서 그리면 측정(measureText)과 렌더가 모두 시스템 글꼴로
+    //   이루어져, 다운로드되는 헌장 PNG에 잘못된 서체가 '영구히' 구워진다(화면과 달리 되돌릴 수 없음).
+    //   실제 사용 폰트를 명시적으로 로드한 뒤 진행한다. (미지원 브라우저는 catch로 무시하고 계속)
+    try {
+      if (document.fonts && document.fonts.load) {
+        await Promise.all([
+          document.fonts.load("40px 'Jua'", '가나다'),
+          document.fonts.load("30px 'Gowun Dodum'", '가나다'),
+        ]);
+        await document.fonts.ready;
+      }
+    } catch (e) { /* 폰트 API 미지원·실패 시에도 헌장 생성은 계속한다 */ }
+
     // 🖼️ 그림 2장 + 서명 이미지를 먼저 로드 (양 패스가 동일 media를 써야 예약 높이가 일치) — 없으면 null로 생략
     const media = {
       school: await this._loadImg(State.get('schoolArt')),   // 🎨 도구화 3-3 '나의 학교'
