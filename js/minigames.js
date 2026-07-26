@@ -1009,7 +1009,7 @@ const Mini = {
       const permit = mode === 'permit';
       const ov = UI.overlay(`
         <div class="stopbtn-wrap">
-          <p class="stopbtn-hint">${permit ? '노아가 나의 대답을 기다리고 있어...' : '노아를 멈춰야 해...!'}</p>
+          <p class="stopbtn-hint">${permit ? '노아가 동혁이의 대답을 기다리고 있어...' : '노아를 멈춰야 해...!'}</p>
           <button class="stopbtn${permit ? ' permit' : ''}">${permit ? '🤚 괜찮아, 해도 돼!' : '🛑 멈춰!'}</button>
           <div class="stopbtn-toast hidden${permit ? ' warm' : ''}"></div>
         </div>`, 'stopbtn-ov');

@@ -25,6 +25,7 @@ const UI = {
     };
     this.els.dlgBox.addEventListener('pointerdown', e => { e.stopPropagation(); this.advance(); });
     window.addEventListener('keydown', e => {
+      if (UI.isTyping(e)) return;   // ⌨ 입력 중에는 대화 진행 단축키를 잠근다 (띄어쓰기·줄바꿈 보장)
       if ((e.code === 'Space' || e.code === 'Enter') && this._dlgResolve) { e.preventDefault(); this.advance(); }
     });
     if ('ontouchstart' in window) document.body.classList.add('touch');
@@ -41,6 +42,17 @@ const UI = {
       if (event.detail.canvas === document.getElementById('game-canvas')) this.hideWebGLError();
     });
     this.initJoystick();
+  },
+
+  /* ⌨ 글자 입력 중인가? — 입력창(이름·이유·관계 정의)에 포커스가 있거나 한글 조합 중이면 true.
+     스페이스(점프)·엔터(대화 넘기기) 같은 게임 단축키가 타이핑을 가로채지 않도록
+     모든 전역 keydown 핸들러의 맨 앞에서 이 함수로 걸러 준다. */
+  isTyping(e) {
+    if (e && e.isComposing) return true;                 // 한글 조합 중
+    const el = (e && e.target) || document.activeElement;
+    if (!el) return false;
+    const tag = el.tagName;
+    return tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT' || el.isContentEditable === true;
   },
 
   /* ───────── 화면 전환 ───────── */

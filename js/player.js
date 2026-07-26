@@ -7,6 +7,10 @@ const Player = {
 
   init() {
     window.addEventListener('keydown', e => {
+      // ⌨ 입력창(이름·이유 쓰기)에 타이핑 중이면 게임 조작키를 모두 무시한다.
+      //    특히 Space는 preventDefault로 막히면 '띄어쓰기'가 입력되지 않으므로 반드시 먼저 걸러야 한다.
+      //    (누르고 있던 이동키가 남지 않도록 keys도 비운다 — 입력창을 열면 캐릭터가 계속 걷는 현상 방지)
+      if (typeof UI !== 'undefined' && UI.isTyping && UI.isTyping(e)) { this.keys = {}; return; }
       this.keys[e.code] = true;
       if (e.code === 'Space') { e.preventDefault(); if (this.enabled) this.tryJump(); }
       if (e.code === 'KeyF' && this.enabled) this.tryInteract();

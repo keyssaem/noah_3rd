@@ -250,7 +250,14 @@ textarea.ov-input { min-height:90px; resize:none; text-align:left; }
   animation:questPop .5s cubic-bezier(.34,1.56,.64,1); }
 
 /* 큰 글자 연출 (교수님 대사, 엔딩) */
-.bigtext-ov { background:rgba(5,5,15,.96); flex-direction:column; gap:30px; padding:30px; cursor:pointer; }
+.bigtext-ov { background:rgba(5,5,15,.96); flex-direction:column; gap:30px; padding:30px; cursor:pointer;
+  /* 내용이 화면보다 길면(엔딩의 출처 표기 등) 잘리지 않도록 스크롤 허용.
+     flex 중앙정렬은 넘칠 때 위아래가 함께 잘리고 스크롤도 막히므로 safe center로 보정한다
+     (미지원 브라우저는 위의 center를 그대로 사용) */
+  overflow-y:auto; overscroll-behavior:contain; justify-content:safe center; }
+.bigtext-ov > * { flex-shrink:0; }
+/* 엔딩 노아 이미지 — 세로가 짧은 화면(태블릿 가로)에서 아래 내용을 밀어내지 않도록 높이도 제한 */
+.ending-noah { max-height:30vh; object-fit:contain; }
 .bigtext-line { color:#fff; font-size:clamp(22px,4.2vw,45px); text-align:center; line-height:1.6;
   max-width:900px; word-break:keep-all; animation:bigIn .8s ease; text-shadow:0 0 24px rgba(120,170,255,.5); }
 @keyframes bigIn { from{opacity:0; transform:scale(.92) translateY(20px);} to{opacity:1; transform:scale(1) translateY(0);} }
