@@ -1,0 +1,14 @@
+# ═══ 파이썬 패키지 (웹앱과 무관) ═══
+# PDF 읽기·폰트 변환 작업 중 pip가 프로젝트 루트를 설치 위치로 잡아 생성된 폴더들.
+# 웹앱 소스는 이들을 전혀 참조하지 않으며, 배포·USB 제출본에 포함되면 안 된다.
+Lib/
+Scripts/
+share/
+pyvenv.cfg
+__pycache__/
+*.pyc
+
+# ═══ OS·편집기 생성 파일 ═══
+Thumbs.db
+desktop.ini
+.DS_Store
