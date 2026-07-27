@@ -98,6 +98,34 @@ const Assets = {
 
   isLoaded(name) { return !!this._cache[name]; },
 
+  /* 🧹 캐시에서 모델 1종을 완전히 해제 (지오메트리·머티리얼·텍스처 GPU 자원 반환)
+     주인공 GLB는 캐릭터 선택 화면의 3D 미리보기 때문에 남·여 두 개를 모두 받는데,
+     선택이 끝나면 고르지 않은 쪽은 게임이 끝날 때까지 한 번도 쓰이지 않는다.
+     텍스처가 4096²라 해제하지 않으면 세션 내내 수십 MB를 붙들고 있게 된다.
+     ⚠ 해당 모델의 인스턴스가 화면에 남아 있을 때 호출하면 안 된다(빈 메시가 됨).
+        호출 뒤 다시 필요해지면 isLoaded()가 false가 되어 박스 캐릭터로 폴백된다. */
+  dispose(name) {
+    const gltf = this._cache[name];
+    if (!gltf) return false;
+    const done = new Set();
+    gltf.scene.traverse(o => {
+      if (!o.isMesh) return;
+      if (o.geometry && !done.has(o.geometry)) { done.add(o.geometry); o.geometry.dispose(); }
+      const mats = Array.isArray(o.material) ? o.material : [o.material];
+      for (const m of mats) {
+        if (!m || done.has(m)) continue;
+        done.add(m);
+        for (const key in m) {                       // map·normalMap 등 모든 텍스처 슬롯
+          const v = m[key];
+          if (v && v.isTexture && !done.has(v)) { done.add(v); v.dispose(); }
+        }
+        m.dispose();
+      }
+    });
+    delete this._cache[name];
+    return true;
+  },
+
   /* 진행바 오버레이와 함께 프리로드 (mp-load 스타일 재사용) → 성공 개수 */
   async preloadWithBar(names, title = '캐릭터를 불러오는 중...') {
     if (!this.supported()) return 0;

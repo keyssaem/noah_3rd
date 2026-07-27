@@ -57,13 +57,19 @@
   okBtn.addEventListener('click', async () => {
     Sound.win();
     Sound.fadeOutBGM(700);              // 🎵 실제 게임 시작과 함께 BGM 페이드아웃
-    previews.forEach(p => p.dispose());   // 미리보기 렌더러 정리
-    previews.length = 0;
     State.set('name', nameInput.value.trim());
     State.set('gender', gender);
+    // 🧹 고르지 않은 주인공 모델 해제 — 미리보기용으로 남·여를 모두 받았지만 이후로는 쓰이지 않는다.
+    //    화면 전환이 끝난 뒤 조용히 정리하도록 3초 늦춘다.
+    const unusedPlayer = gender === 'f' ? 'playerM' : 'playerF';
+    setTimeout(() => Assets.dispose(unusedPlayer), 3000);
     UI.els.fade.classList.add('on');
     await UI.wait(550);
     UI.hide(UI.els.charScreen);
+    // 🖼️ 미리보기 렌더러 정리 — 화면이 완전히 가려진 뒤에 한다.
+    //    (선택 즉시 정리하면 WebGL 컨텍스트가 끊기면서 아직 보이는 미리보기 카드가 비어 보인다)
+    previews.forEach(p => p.dispose());
+    previews.length = 0;
     UI.show(UI.els.hud);
     Flow.begin();
   });
