@@ -45,6 +45,37 @@
   document.head.appendChild(probe);
 })();
 </script>
+<!-- ══════════ 개발자 도구 접근 제한 -->
+     
+<script>
+(function () {
+  var BLOCK_DEVTOOLS = true;          // 
+  if (!BLOCK_DEVTOOLS) return;
+
+  var lastNotice = 0;
+  function notice() {                 // 키를 누르고 있으면 경고창이 쌓이므로 2초에 한 번만
+    var now = Date.now();
+    if (now - lastNotice < 2000) return;
+    lastNotice = now;
+    alert('이 기능은 사용이 제한되었습니다.');
+  }
+
+  document.addEventListener('keydown', function (e) {
+    var k = e.keyCode;
+    var blocked =
+      k === 123 ||                                          // F12
+      (e.ctrlKey && e.shiftKey && (k === 73 || k === 74 || k === 67)) ||  // Ctrl+Shift+I/J/C
+      (e.ctrlKey && !e.shiftKey && k === 85);               // Ctrl+U (소스 보기)
+    if (!blocked) return;                                   // ⚠ Ctrl+C(복사)는 Shift가 없으므로 통과
+    e.preventDefault();
+    if (!e.repeat) notice();
+    return false;
+  });
+
+  // 우클릭 메뉴 — '검사' 진입로. 게임 중 오조작이 잦아 경고창 없이 조용히 막는다
+  document.addEventListener('contextmenu', function (e) { e.preventDefault(); });
+})();
+</script>
 <style>
 /* 오프라인 안내 배너 — style.css 로딩 실패에도 보이도록 인라인 유지 */
 #offline-notice{ display:none; }
@@ -59,7 +90,7 @@ html[data-offline] #offline-notice{
 </style>
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <title>AI 전학생 '노아'와 함께하는 공존·상생 프로젝트</title>
-<!-- 셀프호스트 폰트 (Jua·Gowun Dodum, OFL) — 오프라인에서도 동일 서체 -->
+<!-- 셀프호스트 폰트 (Jua·Gowun Dodum) — 오프라인에서도 동일 서체 -->
 <link rel="stylesheet" href="css/fonts.css">
 <link rel="stylesheet" href="css/style.css">
 </head>
@@ -101,7 +132,7 @@ html[data-offline] #offline-notice{
     </div>
   </div>
 
-  <!-- ══════════ 1-3 이름/성별 설정 (포켓몬 스타일) ══════════ -->
+  <!-- ══════════ 1-3 이름/성별 설정  ══════════ -->
   <div id="char-screen" class="screen hidden">
     <div class="char-inner">
       <h2>당신은 누구인가요?</h2>

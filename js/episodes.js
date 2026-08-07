@@ -281,8 +281,11 @@ const Flow = {
     World.addNPC(Chars.teacher(), -3.5, -3.7, 0);
     this.addFriendZone('teacher', '선생님과 이야기하기', -3.5, -3.7);
     // 아래 좌표는 모두 "책상 중심" — 실제로 서는 위치는 World.deskStand()가 책상 오른쪽 뒤로 옮겨 준다
-    // (책상 (4.5,0.6) 자리는 노아 잡담 존과 겹쳐 (-4.5,3.2)로 이동)
-    const desks = [[-4.5, -2], [-1.5, -2], [4.5, -2], [-4.5, 0.6], [-4.5, 3.2], [-1.5, 3.2]];
+    // (책상 (4.5,0.6) 자리는 노아 잡담 존과 겹쳐 비워 둔다)
+    // ⚠ 자리 배치 원칙: 같은 모델(친구 3종 재사용)끼리 옆자리·앞뒤로 붙이지 말 것.
+    //    특히 같은 줄에 세로로 겹치면 뒤통수 실루엣이 똑같아 "복사한 캐릭터"가 바로 들통난다.
+    //    0 초록남[동혁모델] · 1 겨자여[채원] · 2 하늘여[서연] · 3 주황남[동혁] · 4 보라여[채원] · 5 분홍여[서연]
+    const desks = [[-4.5, -2], [-1.5, -2], [4.5, -2], [-1.5, 3.2], [-4.5, 0.6], [-4.5, 3.2]];
     desks.forEach((d, i) => {
       const [sx, sz] = World.deskStand(d[0], d[1]);
       World.addNPC(Chars.student(i), sx, sz, Math.PI);
@@ -298,9 +301,14 @@ const Flow = {
     sit(Chars.seoyeon(), 'seoyeon', '서연이와 이야기하기', -1.5, 0.6);   // 서연 — 첫 교실부터 등장
     if (withNoah) {
       this.noah = Chars.noah(State.get('noahDesign'));
-      World.addNPC(this.noah, 6.0,0.6, Math.PI);
+      World.addNPC(this.noah, this.NOAH_SEAT2[0], this.NOAH_SEAT2[1], Math.PI);
     }
   },
+
+  /* 🤖 5단계 교실에서 노아가 서 있는 자리 — 잡담 존과 반드시 같은 좌표를 쓴다.
+     앞줄 오른쪽 학생(4.95,-1.05)에게 너무 붙어 있으면 그 학생의 대화 존이 먼저 잡혀
+     '노아와 이야기하기'가 안 뜬다. 뒤쪽(+Z)으로 물려 두 존을 떼어 놓았다 */
+  NOAH_SEAT2: [6.0, 2.2],
 
   /* 🎥 노아 연출 순간 — 클립 재생 + 카메라를 노아에게 밀어넣어 크게 잡기
      GLB 노아면 해당 클립, 박스 노아면 클립은 무시하고 카메라 포커스만 (양쪽 안전) */
@@ -631,7 +639,7 @@ if (noah.group.children.length > 0) {
     if (z) z.label = '운동장으로 가기';
     World.setBeacon(6, 5.2);
     World.addItem(-5.5, 1.5, 4.8, 'user1');
-    this.addNoahChatZone(6, 0.6);          // 💬 자리에 앉은 노아에게 말 걸기
+    this.addNoahChatZone(this.NOAH_SEAT2[0], this.NOAH_SEAT2[1]);   // 💬 자리에 앉은 노아에게 말 걸기
     await this.sysMsg('(교실 뒤쪽에 새로운 원칙 카드가 반짝이고 있다! 📔)');
     Player.enabled = true;
   },

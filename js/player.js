@@ -182,9 +182,18 @@ const Player = {
     // 상호작용 존 체크 — 클로즈업·팝업 중(uiBusy)에는 프롬프트를 내리고 F를 잠근다
     const busy = this.uiBusy();
     let near = null;
-    if (!busy) for (const z of World.zones) {
-      if (z.used) continue;
-      if (Math.hypot(this.pos.x - z.x, this.pos.z - z.z) < z.r) { near = z; break; }
+    // 존이 겹칠 땐 "가장 가까운" 것을 고른다. 배열 순서로 먼저 잡으면, 옆자리 학생의 대화 존이
+    // 노아 잡담 존을 가로채 '노아와 이야기하기'가 아예 안 뜨는 일이 생긴다.
+    // 단 auto(스토리 자동 진행) 존은 예전처럼 무조건 우선 — 겹쳐서 밀리면 이야기가 진행되지 않는다.
+    if (!busy) {
+      let best = Infinity;
+      for (const z of World.zones) {
+        if (z.used) continue;
+        const d = Math.hypot(this.pos.x - z.x, this.pos.z - z.z);
+        if (d >= z.r) continue;
+        if (z.auto) { near = z; break; }
+        if (d < best) { best = d; near = z; }
+      }
     }
     if (this.enabled && !busy && near !== this.nearZone) {
       this.nearZone = near;
