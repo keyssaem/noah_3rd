@@ -114,17 +114,32 @@ const Chars = {
     return sp;
   },
 
+  /* 🧑‍🤝‍🧑 주요 친구 3명 — GLB(정지 모델) 우선, 실패 시 기존 박스 폴백.
+     키는 주인공(1.65)보다 살짝 작게 잡아 같은 6학년으로 보이게 한다 */
+  FRIEND_H: 1.6,
+  _friendGLB(model, name, color) {
+    if (typeof Assets === 'undefined' || !Assets.isLoaded(model)) return null;
+    const ch = this.glbChar(model, { height: this.FRIEND_H, clips: this.CLIPS[model] });
+    if (ch) ch.group.add(this.nameTag(name, color, this.FRIEND_H + 0.28));
+    return ch;
+  },
   donghyuk() {
+    const glb = this._friendGLB('friendBoy', '동혁', '#8ce99a');
+    if (glb) return glb;
     const ch = this.person({ hair: 0x4e342e, shirt: 0x69db7c, pants: 0x2f4f4f });
     ch.group.add(this.nameTag('동혁', '#8ce99a'));
     return ch;
   },
   chaewon() {
+    const glb = this._friendGLB('friendGirlCw', '채원', '#ffd43b');
+    if (glb) return glb;
     const ch = this.person({ girl: true, hair: 0x212121, shirt: 0xffd43b, pants: 0xe8590c });
     ch.group.add(this.nameTag('채원', '#ffd43b'));
     return ch;
   },
   seoyeon() {
+    const glb = this._friendGLB('friendGirlSy', '서연', '#d0bfff');
+    if (glb) return glb;
     const ch = this.person({ girl: true, hair: 0x6d4c41, shirt: 0xb197fc, pants: 0x7048e8 });
     ch.group.add(this.nameTag('서연', '#d0bfff'));
     return ch;
@@ -139,9 +154,188 @@ const Chars = {
     ch.group.add(this.nameTag('선생님', '#ffffff', 1.92));
     return ch;
   },
+  /* ───── 👫 배경 학생 — 친구 3종 모델을 색만 갈아입혀 재사용 (이름표 없음) ─────
+     지오메트리·원본 텍스처는 인스턴스끼리 공유되므로 추가 비용은 변형 텍스처(512²) 6장뿐.
+     머리 / 윗옷 / 아래옷은 "UV 파트 마스크"(정점 높이 → 텍셀)로 나눠 각각 다른 색을 입힌다.
+     look: [색상각도(0~360), 채도] — 원래 음영(명도)은 보존해서 주름·그림자가 살아 있다 */
+  STUDENT_LOOKS: [
+    { model: 'friendBoy',    hair: [25, 0.40], top: [145, 0.50], bottom: [215, 0.45], h: 1.58, ry:  0.12 },
+    { model: 'friendGirlCw', hair: [10, 0.35], top: [ 45, 0.55], bottom: [260, 0.40], h: 1.54, ry: -0.10 },
+    { model: 'friendGirlSy', hair: [30, 0.20], top: [190, 0.50], bottom: [220, 0.45], h: 1.61, ry:  0.08 },
+    { model: 'friendBoy',    hair: [20, 0.10], top: [ 25, 0.55], bottom: [155, 0.35], h: 1.63, ry: -0.15 },
+    { model: 'friendGirlCw', hair: [35, 0.45], top: [285, 0.45], bottom: [205, 0.40], h: 1.57, ry:  0.05 },
+    { model: 'friendGirlSy', hair: [15, 0.30], top: [345, 0.50], bottom: [230, 0.45], h: 1.52, ry: -0.06 },
+  ],
   student(i) {
+    const look = this.STUDENT_LOOKS[i % this.STUDENT_LOOKS.length];
+    if (typeof Assets !== 'undefined' && Assets.isLoaded(look.model)) {
+      const ch = this.glbChar(look.model, { height: look.h, faceY: look.ry, clips: this.CLIPS[look.model] });
+      if (ch) { this._wearLook(ch, look, i % this.STUDENT_LOOKS.length); return ch; }
+    }
     const shirts = [0xff8787, 0x74c0fc, 0x63e6be, 0xffd43b, 0xb197fc, 0xffa94d];
     return this.person({ girl: i % 2 === 1, hair: [0x212121, 0x4e342e, 0x5d4037][i % 3], shirt: shirts[i % 6], pants: 0x455a64, scale: 0.95 });
+  },
+
+  /* 변형 텍스처를 인스턴스 전용 머티리얼에 물린다 (원본을 그대로 쓰면 친구 3인방까지 물든다) */
+  _wearLook(ch, look, idx) {
+    let mesh = null;
+    ch.group.traverse(o => { if (!mesh && o.isMesh && o.material && o.material.map) mesh = o; });
+    if (!mesh) return;
+    const map = this._lookMap(mesh, look, idx);
+    if (!map) return;
+    mesh.material = mesh.material.clone();
+    mesh.material.map = map;
+    mesh.material.needsUpdate = true;
+  },
+
+  _lookCache: {}, _maskCache: {},
+  _lookMap(mesh, look, idx) {
+    const key = look.model + '#' + idx;
+    if (key in this._lookCache) return this._lookCache[key];
+    let tex = null;
+    try { tex = this._buildLookMap(mesh, look); }
+    catch (e) { console.warn('배경 학생 색 변경 실패 — 원본 텍스처 사용', e); }
+    this._lookCache[key] = tex;
+    return tex;
+  },
+
+  _buildLookMap(mesh, look) {
+    const S = 512;                                   // 배경 NPC라 절반 해상도로 충분 (메모리 1/4)
+    const src = mesh.material.map;
+    const cv = document.createElement('canvas'); cv.width = cv.height = S;
+    const ctx = cv.getContext('2d', { willReadFrequently: true });
+    ctx.drawImage(src.image, 0, 0, S, S);
+    const im = ctx.getImageData(0, 0, S, S), d = im.data;
+    const mask = this._partMask(mesh, look.model, S);
+    // 👕 허리 경계(4번) 판정용 기준색 — 확실한 상의(2)·하의(3) 영역의 평균 원단색.
+    //    셔츠 밑단이 허리선 아래로 내려와 바지 색으로 물들던 문제를 색으로 되돌린다
+    const ref = { 2: [0, 0, 0, 0], 3: [0, 0, 0, 0] };
+    for (let p = 0, i = 0; p < d.length; p += 4, i++) {
+      const a = ref[mask[i]];
+      if (!a || this._isSkinPx(d[p], d[p + 1], d[p + 2])) continue;
+      a[0] += d[p]; a[1] += d[p + 1]; a[2] += d[p + 2]; a[3]++;
+    }
+    const refTop = ref[2][3] ? ref[2].map(x => x / ref[2][3]) : null;
+    const refBot = ref[3][3] ? ref[3].map(x => x / ref[3][3]) : null;
+    const dist2 = (r, g, b, m) => (r - m[0]) ** 2 + (g - m[1]) ** 2 + (b - m[2]) ** 2;
+
+    for (let p = 0, i = 0; p < d.length; p += 4, i++) {
+      let part = mask[i];
+      if (!part) continue;
+      if (part === 4) {                              // 허리 구간 — 원단색이 가까운 쪽으로 편입
+        if (!refTop || !refBot) part = 3;
+        else part = dist2(d[p], d[p + 1], d[p + 2], refTop) <= dist2(d[p], d[p + 1], d[p + 2], refBot) ? 2 : 3;
+      }
+      const R = d[p] / 255, G = d[p + 1] / 255, B = d[p + 2] / 255;
+      const mx = Math.max(R, G, B), mn = Math.min(R, G, B);
+      const v = mx, s = mx ? (mx - mn) / mx : 0;
+      if (v < 0.12) continue;                        // 눈동자·윤곽선 같은 아주 어두운 픽셀은 보존
+      let h = 0;
+      if (mx !== mn) {
+        if (mx === R) h = 60 * (((G - B) / (mx - mn)) % 6);
+        else if (mx === G) h = 60 * ((B - R) / (mx - mn) + 2);
+        else h = 60 * ((R - G) / (mx - mn) + 4);
+        if (h < 0) h += 360;
+      }
+      if (this._isSkinPx(d[p], d[p + 1], d[p + 2])) continue;                 // 🧑 살색(얼굴·손·다리) 보호
+      let tone;
+      if (part === 1) { if (v > 0.45) continue; tone = look.hair; }           // 머리카락은 어두운 픽셀만
+      else tone = part === 2 ? look.top : look.bottom;
+      const ns = Math.min(0.9, tone[1] + s * 0.25);  // 원단의 미세한 무늬를 조금 남긴다
+      const c = this._hsv2rgb(tone[0] / 360, ns, v);
+      d[p] = c[0]; d[p + 1] = c[1]; d[p + 2] = c[2];
+    }
+    ctx.putImageData(im, 0, 0);
+    const t = new THREE.CanvasTexture(cv);
+    t.flipY = src.flipY;                             // glTF 텍스처는 flipY=false — 캔버스 기본값(true)과 다르다
+    t.wrapS = src.wrapS; t.wrapT = src.wrapT;
+    if ('colorSpace' in src) t.colorSpace = src.colorSpace; else t.encoding = src.encoding;
+    t.needsUpdate = true;
+    return t;
+  },
+
+  /* 🧑 살색 판정 — 얼굴·손·다리는 어떤 파트에 속하든 물들이지 않는다 */
+  _isSkinPx(r, g, b) {
+    const R = r / 255, G = g / 255, B = b / 255;
+    const mx = Math.max(R, G, B), mn = Math.min(R, G, B);
+    if (mx <= 0.5) return false;
+    const s = (mx - mn) / mx;
+    if (s <= 0.12 || s >= 0.72) return false;
+    let h = 0;
+    if (mx !== mn) {
+      if (mx === R) h = 60 * (((G - B) / (mx - mn)) % 6);
+      else if (mx === G) h = 60 * ((B - R) / (mx - mn) + 2);
+      else h = 60 * ((R - G) / (mx - mn) + 4);
+      if (h < 0) h += 360;
+    }
+    return h < 50 || h > 330;
+  },
+
+  /* UV 파트 마스크 — 삼각형의 평균 높이로 머리(1)/윗옷(2)/아래옷(3)을 나눠 텍셀에 칠한다.
+     허리 구간은 4로 남겨 두고, 상의 밑단인지 하의인지는 원단색으로 판정한다(_buildLookMap).
+     신발(발목 아래)은 0으로 남겨 원래 색을 유지. 모델당 한 번만 만들고 캐시 */
+  _partMask(mesh, model, S) {
+    if (this._maskCache[model]) return this._maskCache[model];
+    const geo = mesh.geometry, pos = geo.attributes.position, uv = geo.attributes.uv, ix = geo.index;
+    geo.computeBoundingBox();
+    const y0 = geo.boundingBox.min.y, hh = (geo.boundingBox.max.y - y0) || 1;
+    const mask = new Uint8Array(S * S);
+    const n = ix ? ix.count : pos.count;
+    for (let t = 0; t < n; t += 3) {
+      const a = ix ? ix.getX(t) : t, b = ix ? ix.getX(t + 1) : t + 1, c = ix ? ix.getX(t + 2) : t + 2;
+      const yr = ((pos.getY(a) + pos.getY(b) + pos.getY(c)) / 3 - y0) / hh;
+      // 0.86 ≈ 턱선(사람 7.5등신 기준) · 0.38~0.58 = 셔츠 밑단과 허리춤이 섞이는 구간
+      const part = yr < 0.10 ? 0 : yr < 0.38 ? 3 : yr < 0.58 ? 4 : yr < 0.86 ? 2 : 1;
+      if (part) this._rasterUV(mask, S, part, uv, a, b, c);
+    }
+    this._dilate(mask, S);                           // UV 이음새 번짐 대비 1~2px 확장
+    this._maskCache[model] = mask;
+    return mask;
+  },
+
+  _rasterUV(mask, S, part, uv, ia, ib, ic) {
+    const ax = uv.getX(ia) * S, ay = uv.getY(ia) * S,
+          bx = uv.getX(ib) * S, by = uv.getY(ib) * S,
+          cx = uv.getX(ic) * S, cy = uv.getY(ic) * S;
+    const det = (by - cy) * (ax - cx) + (cx - bx) * (ay - cy);
+    if (!det) return;
+    const x0 = Math.max(0, Math.floor(Math.min(ax, bx, cx))), x1 = Math.min(S - 1, Math.ceil(Math.max(ax, bx, cx)));
+    const y0 = Math.max(0, Math.floor(Math.min(ay, by, cy))), y1 = Math.min(S - 1, Math.ceil(Math.max(ay, by, cy)));
+    for (let y = y0; y <= y1; y++) {
+      for (let x = x0; x <= x1; x++) {
+        const px = x + 0.5, py = y + 0.5;
+        const l1 = ((by - cy) * (px - cx) + (cx - bx) * (py - cy)) / det;
+        const l2 = ((cy - ay) * (px - cx) + (ax - cx) * (py - cy)) / det;
+        if (l1 < -0.02 || l2 < -0.02 || l1 + l2 > 1.02) continue;
+        mask[y * S + x] = part;
+      }
+    }
+  },
+
+  _dilate(mask, S, passes = 2) {
+    for (let p = 0; p < passes; p++) {
+      const src = mask.slice();
+      for (let y = 0; y < S; y++) {
+        for (let x = 0; x < S; x++) {
+          const i = y * S + x;
+          if (src[i]) continue;
+          for (let dy = -1; dy <= 1 && !mask[i]; dy++) {
+            for (let dx = -1; dx <= 1; dx++) {
+              const nx = x + dx, ny = y + dy;
+              if (nx < 0 || ny < 0 || nx >= S || ny >= S) continue;
+              if (src[ny * S + nx]) { mask[i] = src[ny * S + nx]; break; }
+            }
+          }
+        }
+      }
+    }
+  },
+
+  _hsv2rgb(h, s, v) {
+    const i = Math.floor(h * 6), f = h * 6 - i;
+    const p = v * (1 - s), q = v * (1 - f * s), t = v * (1 - (1 - f) * s);
+    const r = [v, q, p, p, t, v][i % 6], g = [t, v, v, q, p, p][i % 6], b = [p, p, t, v, v, q][i % 6];
+    return [Math.round(r * 255), Math.round(g * 255), Math.round(b * 255)];
   },
 
   /* ───── GLB 캐릭터 래퍼 (박스 캐릭터와 동일한 인터페이스 { group, update }) ─────
@@ -162,6 +356,7 @@ const Chars = {
     const clips = opts.clips || {};
     const api = {
       group, mixer, actions, clips, _cur: -1, isGLB: true, design: opts.design,
+      _bt: Math.random() * 6, _by: null,    // 호흡 위상은 개체마다 다르게 (여럿이 같이 들썩이면 어색)
       /* 클립 재생 — key(문자열) 또는 인덱스, 크로스페이드 */
       play(key, fade = 0.3) {
         if (!mixer) return;
@@ -182,7 +377,13 @@ const Chars = {
           actions[clips.idle].setEffectiveWeight(1 - this._locoW);
           this._cur = this._locoW > 0.5 ? clips.walk : clips.idle;
         }
-        if (mixer) mixer.update(dt);
+        if (mixer) { mixer.update(dt); return; }
+        // 🫁 애니메이션이 없는 정지 모델(친구·배경 학생) — 미세 호흡 ±1cm.
+        //    완전히 굳어 있으면 움직이는 선생님·노아 옆에서 마네킹처럼 보인다.
+        //    기준 y는 첫 프레임에 기억 (addNPC가 위치를 잡은 뒤라 0이 아닐 수도 있음)
+        if (this._by == null) this._by = group.position.y;
+        this._bt += dt;
+        group.position.y = this._by + Math.sin(this._bt * 1.6) * 0.01;
       },
     };
     api._loco = clips.walk != null && clips.idle != null;   // 이동 블렌딩 활성 조건
@@ -205,9 +406,12 @@ const Chars = {
   CLIP_LABELS: { idle:'대기', sit:'앉기', walk:'걷기', surprise:'놀라기',
     greet:'꾸벅 인사', admit:'인정하기', scared:'두려워하기', look:'둘러보기' },
   CLIPS: {
-    playerM:   { idle: 0, sit: 1, walk: 3, surprise: 4 },   // [2]둘러보기는 여자와 통일 위해 제외
-    playerF:   { idle: 0, sit: 1, walk: 2, surprise: 4 },   // [3]인정하기는 제외
+    // 2026-08-07 주인공 2K 재출력 — 실제로 쓰는 대기·걷기만 남김(앉기·놀라기는 코드에서 미사용).
+    // ⚠ 남/여 클립 순서가 서로 다르다 (대기 15.4초 / 걷기 2.4초로 식별 — 인덱스를 임의로 맞추지 말 것)
+    playerM:   { idle: 0, walk: 1 },
+    playerF:   { idle: 1, walk: 0 },
     teacher:   { look: 0 },
+    friendBoy: {}, friendGirlSy: {}, friendGirlCw: {},      // 친구 3종은 정지 모델(클립 없음)
     noahHuman: { idle: 0, greet: 1, admit: 2, scared: 3 },
     noahAnimal:{ idle: 1, greet: 2, scared: 3 },            // [0] 미사용
     noahCar:   {},                                          // 정적

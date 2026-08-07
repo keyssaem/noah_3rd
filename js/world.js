@@ -2,7 +2,7 @@
 const World = {
   renderer: null, scene: null, camera: null, contextLost: false,
   root: null, current: '',
-  platforms: [], bounds: null, zones: [], npcs: [], items: [], obstacles: [],
+  platforms: [], bounds: null, zones: [], npcs: [], items: [], obstacles: [], pads: [],
   beacon: null, redMode: false,
   _hemi: null, _sun: null,
 
@@ -59,10 +59,20 @@ const World = {
   },
 
   PRELOAD: {                          // 씬별 미리 받을 캐릭터 모델
-    classroom: ['teacher'],
-    playground: ['teacher'],
-    hallway: ['teacher'],               // 복도2에 선생님 등장
+    // 친구 3종은 배경 학생 6명으로도 재사용되므로 친구가 없는 씬에도 필요할 수 있다.
+    // ⚠ 동혁의 첫 등장은 교실이 아니라 월드맵(2-2 등굣길) — 여기가 빠지면 박스 동혁 → GLB 동혁으로 사람이 바뀐다
+    worldmap: ['friendBoy'],
+    classroom: ['teacher', 'friendBoy', 'friendGirlCw', 'friendGirlSy'],
+    playground: ['teacher', 'friendBoy', 'friendGirlCw', 'friendGirlSy'],
+    hallway: ['teacher', 'friendBoy', 'friendGirlCw', 'friendGirlSy'],   // 복도2에 선생님 등장
   },
+
+  /* 🪑 교실 자리 — 책상 중심 기준 상대 위치.
+     의자는 왼쪽 뒤, 학생은 오른쪽 뒤에 세워 캐릭터가 의자에 박혀 보이던 문제를 없앤다.
+     ⚠ 자리에 세우는 쪽(episodes.js)은 반드시 deskStand()를 거칠 것 — 좌표를 따로 적으면 다시 어긋난다 */
+  CHAIR_OFF: [-0.45, 0.85],
+  STAND_OFF: [0.45, 0.95],
+  deskStand(x, z) { return [x + this.STAND_OFF[0], z + this.STAND_OFF[1]]; },
 
   async preloadProps(name) {
     const spec = this.PRELOAD[name];
@@ -125,8 +135,15 @@ const World = {
   },
   clearBeacon() { if (this.beacon) { this.root.remove(this.beacon); this.beacon = null; } },
 
+  /* 🧍 NPC가 밟고 설 바닥 높이 — 티볼 베이스처럼 살짝 솟은 발판 위에서 발이 묻히지 않게 */
+  standY(x, z) {
+    for (const p of this.pads)
+      if (Math.abs(x - p.x) <= p.hw && Math.abs(z - p.z) <= p.hw) return p.y;
+    return 0;
+  },
+
   addNPC(char, x, z, ry = 0) {
-    char.group.position.set(x, 0, z);
+    char.group.position.set(x, this.standY(x, z), z);
     char.group.rotation.y = ry;
     this.root.add(char.group);
     this.npcs.push(char);
@@ -143,7 +160,7 @@ const World = {
     this.root = new THREE.Group();
     this.scene.add(this.root);
     this.platforms = []; this.zones = []; this.npcs = [];
-    this.items = []; this.obstacles = []; this.beacon = null;
+    this.items = []; this.obstacles = []; this.pads = []; this.beacon = null;
   },
 
   async go(name, spawn) {
@@ -274,11 +291,11 @@ const World = {
     this.box(1.6, 1.0, 0.8, 0x8d6e63, -3.5, 0.5, -4.8);
     this.obstacles.push({ x: -3.5, z: -4.8, r: 1.0 });
 
-    // 학생 책상 3열 x 4줄
+    // 학생 책상 3열 x 4줄 (의자는 책상 왼쪽 뒤 — 학생은 오른쪽 뒤에 서므로 서로 겹치지 않는다)
     for (let r = 0; r < 3; r++) for (let c = 0; c < 4; c++) {
       const x = -4.5 + c * 3, z = -2 + r * 2.6;
       this.box(1.5, 0.75, 0.8, 0xa1887f, x, 0.42, z);
-      this.box(0.6, 0.45, 0.6, 0x8d6e63, x, 0.25, z + 0.85);
+      this.box(0.6, 0.45, 0.6, 0x8d6e63, x + this.CHAIR_OFF[0], 0.25, z + this.CHAIR_OFF[1]);
       this.obstacles.push({ x, z: z + 0.3, r: 1.0 });
     }
     // 창문
@@ -309,8 +326,13 @@ const World = {
     this.box(0.12, 0.9, 0.12, 0x455a64, 0, 0.45, 6);
     const ball = new THREE.Mesh(new THREE.SphereGeometry(0.16), this.mat(0xffffff));
     ball.position.set(0, 1.0, 6); this.root.add(ball);
-    [[4, 2], [0, -2], [-4, 2]].forEach(p => this.box(0.9, 0.08, 0.9, 0xffffff, p[0], 0.05, p[1] + 2));
+    // 베이스는 바닥보다 조금 솟아 있다 — 위에 세울 NPC를 위해 윗면 높이를 pads에 등록(standY)
+    [[4, 2], [0, -2], [-4, 2]].forEach(p => {
+      this.box(0.9, 0.08, 0.9, 0xffffff, p[0], 0.05, p[1] + 2);
+      this.pads.push({ x: p[0], z: p[1] + 2, hw: 0.45, y: 0.09 });
+    });
     this.box(1.1, 0.1, 1.1, 0xffd54f, 0, 0.05, 6.9);
+    this.pads.push({ x: 0, z: 6.9, hw: 0.55, y: 0.1 });
 
     // 철봉 & 미끄럼틀
     this.box(0.12, 2, 0.12, 0x9e9e9e, -18, 1, 10);

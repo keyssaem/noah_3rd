@@ -7,6 +7,9 @@ const Assets = {
     playerM:  'media/image/player_boy.glb',
     playerF:  'media/image/player_girl.glb',
     teacher:  'media/image/teacher.glb',
+    friendBoy:   'media/image/friend_boy_dh.glb',    // 동혁 (정지 모델 · 1K)
+    friendGirlSy:'media/image/friend_girl_sy.glb',   // 서연 (정지 모델 · 1K)
+    friendGirlCw:'media/image/friend_girl_cw.glb',   // 채원 (정지 모델 · 1K)
     noahHuman:'media/image/noah_human.glb',
     noahAnimal:'media/image/noah_animal.glb',
     noahCar:  'media/image/noah_car.glb',

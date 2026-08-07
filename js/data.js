@@ -152,7 +152,7 @@ chaewonQuest: [
 
 mirror4_intro: [
   { speaker:'System', text:'☀️ 운동장 — 3교시 <체육 시간>, 오늘 종목은 티볼!' },
-  { speaker:'선생님', text:'노아야, 네가 팀을 나눠 볼래?' },
+  { speaker:'선생님', text:'노아야, 네가 친구들의 팀을 나눠 볼래?' , must:true },
   { speaker:'노아', text:'삐빅! 데이터 분석을 시작합니다. 친구들의 운동 능력 등급을 발표하겠습니다.', emotion:'thinking' },
   { speaker:'노아', text:'삐빅! 동혁이는 달리기 속도가 느리므로, D등급입니다.', emotion:'thinking' },
   { speaker:'노아', text:'삐빅! 채원이는 타격을 잘하므로 A등급입니다.', emotion:'thinking' },
@@ -186,7 +186,7 @@ imitate1b: [
 ],
 imitate1c: [
   { speaker:'노아', text:'(...반응이 예측과 다릅니다. 관찰한 <친한 사이의 행동>을 그대로 재현했습니다. 왜 모두 놀라는 것입니까?)', emotion:'sad' , must:true },
-  { speaker:'나(독백)', text:'(소름이 돋았다... 노아는 말만 배우는 게 아니야. <행동>도 보고 배워. 우리가 함부로 대하면... 함부로 대하는 법까지 배우는 거야.)' , must:true  },
+  { speaker:'나(독백)', text:'(소름이 돋았다... 노아는 말만 배우는 게 아니야. <행동>도 보고 배워. 우리가 함부로 대하면... <함부로 대하는 법>까지 배우는 거야.)' , must:true  },
 ],
 
 mirror5_intro: [

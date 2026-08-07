@@ -263,13 +263,14 @@ const Endings = {
         <div style="text-align:center; max-width:min(560px,94vw);">
           <div style="font-size:70px; filter:grayscale(1) brightness(.5);">🤖</div>
           <h3 style="color:#fff; font-size:clamp(20px,3.4vw,30px); margin:14px 0;">노아가 강제 종료되었습니다.</h3>
-          <p style="color:#adb5bd; margin-bottom:14px;">재시작하려면 앞에 있는 [다음 활동지]를 가져가서 비밀 코드 4자리를 확인하고, <br> 다이얼을 돌려 맞춰 주세요.</p>
+          <p style="color:#adb5bd; margin-bottom:14px;">재시작하려면 앞에 있는 [다음 활동지]를 가져와서 비밀 코드 4자리를 확인하고, <br> 다이얼을 돌려 맞춰 주세요.</p>
           <div class="safe-dials"></div>
           <div class="ov-choices" style="flex-direction:row; justify-content:center;">
             <button class="choice-btn hint">💡 힌트 보기</button>
             <button class="choice-btn go" style="background:#c92a2a; border-color:#a61e1e; color:#fff;">🔄 재시작</button>
           </div>
           <p class="hint-msg" style="color:#ffe066; min-height:3em; margin-top:12px; font-size:clamp(14px,2.2vw,18px);"></p>
+          <button class="choice-btn answer hidden" style="background:#fff9db; border-color:#ffd43b; color:#5c3c00; margin-top:4px;">📄 정답 보기</button>
         </div>`, 'bigtext-ov');
 
       // 3D 원통 롤러 다이얼 4개 — 숫자 10개를 36°씩 원통에 배치
@@ -297,9 +298,19 @@ const Endings = {
         dialsEl.appendChild(el);
       }
 
+      // 💡 힌트 → 📄 정답 보기 2단 구성 — 활동지를 이미 가져간 학생이 여기서 막히지 않도록
+      const ansBtn = ov.querySelector('.answer');
+      ansBtn.onclick = () => {
+        Sound.chime();
+        msg.innerHTML = '📄 노아가 우리와 되고 싶은 사이는 7942 : <b>친(7)구(9) 사(4)이(2)</b> 입니다.';
+        ansBtn.classList.add('hidden');   // 정답을 띄웠으면 버튼은 다시 감춘다
+      };
       ov.querySelector('.hint').onclick = () => {
         Sound.chime();
-        msg.innerHTML = '👩\u200D🏫 선생님의 귓속말: "노아가 우리와 되고 싶은 사이를 네 자리 숫자로 표현하면? (조용히 다음 활동지 가져가기)';
+        ansBtn.classList.remove('hidden');
+        msg.innerHTML = '👩\u200D🏫 선생님의 귓속말: "노아가 우리와 되고 싶은 사이를 네 자리 숫자로 표현하면? (조용히 다음 활동지 가져오기)';
+        msg.insertAdjacentHTML('beforeend',
+          '<br><span style="color:#adb5bd;">활동지를 가져왔다면, [📄 정답 보기]를 클릭하세요.</span>');
       };
       let done = false;
       ov.querySelector('.go').onclick = async () => {

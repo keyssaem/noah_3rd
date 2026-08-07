@@ -131,6 +131,24 @@ const Flow = {
     const uid = id + '@' + x + ',' + z;          // 익명 학생도 개인별로 세도록 위치 기반 uid
     World.addZone(x, z, 1.6, label, () => Flow.friendTalk(id, uid));
   },
+
+  /* 🏃 운동장 뒤편 배경 학생 4명 — 카메라(+Z) 쪽으로 등을 돌려 세운다.
+     이름표가 없는 이 4명은 채원·서연·동혁과 같은 모델을 색만 바꿔 재사용하므로,
+     얼굴이 정면으로 보이면 "다 똑같이 생겼다"가 바로 드러난다.
+     캐릭터가 향하는 방향은 (sin ry, cos ry) — 3π/4는 오른쪽 뒤(+X·-Z), 5π/4는 왼쪽 뒤(-X·-Z) 대각선.
+     둘씩 마주 보게 짝지어 세워 "삼삼오오 서서 이야기 중"으로 읽히게 하고, z도 어긋나게 둔다 */
+  BACK_ROW: [
+    { x: -8.4, z: 8.6,  ry: 3 * Math.PI / 4 + 0.10 },   // ↘ 오른쪽 뒤 — 옆의 B를 향해
+    { x: -5.0, z: 10.6, ry: 5 * Math.PI / 4 - 0.10 },   // ↙ 왼쪽 뒤 — A와 마주 보는 짝
+    { x:  2.4, z: 8.2,  ry: 3 * Math.PI / 4 - 0.08 },   // ↘ 오른쪽 뒤 — D를 향해
+    { x:  6.0, z: 10.9, ry: 5 * Math.PI / 4 + 0.06 },   // ↙ 왼쪽 뒤 — C와 짝
+  ],
+  addBackRow() {
+    this.BACK_ROW.forEach((s, i) => {
+      World.addNPC(Chars.student(i), s.x, s.z, s.ry);
+      this.addFriendZone('student', '친구와 이야기하기', s.x, s.z);
+    });
+  },
   async friendTalk(id, uid) {
     const src = DATA.friendChat[id === 'student' ? 'students' : id];
     if (!src) return;
@@ -262,18 +280,22 @@ const Flow = {
     this.talked = new Set(); this.talkedLog = new Map(); this._recapShown = false;
     World.addNPC(Chars.teacher(), -3.5, -3.7, 0);
     this.addFriendZone('teacher', '선생님과 이야기하기', -3.5, -3.7);
-    // (4.5,1.5) 자리는 노아 잡담 존과 겹쳐 (-4.5,4.1)로 이동
-    const seats = [[-4.5, -1.1], [-1.5, -1.1], [4.5, -1.1], [-4.5, 1.5], [-4.5, 4.1], [-1.5, 4.1]];
-    seats.forEach((s, i) => {
-      World.addNPC(Chars.student(i), s[0], s[1], Math.PI);
-      this.addFriendZone('student', '친구와 이야기하기', s[0], s[1]);
+    // 아래 좌표는 모두 "책상 중심" — 실제로 서는 위치는 World.deskStand()가 책상 오른쪽 뒤로 옮겨 준다
+    // (책상 (4.5,0.6) 자리는 노아 잡담 존과 겹쳐 (-4.5,3.2)로 이동)
+    const desks = [[-4.5, -2], [-1.5, -2], [4.5, -2], [-4.5, 0.6], [-4.5, 3.2], [-1.5, 3.2]];
+    desks.forEach((d, i) => {
+      const [sx, sz] = World.deskStand(d[0], d[1]);
+      World.addNPC(Chars.student(i), sx, sz, Math.PI);
+      this.addFriendZone('student', '친구와 이야기하기', sx, sz);
     });
-    World.addNPC(Chars.donghyuk(), 1.5, 1.5, Math.PI);
-    this.addFriendZone('donghyuk', '동혁이와 이야기하기', 1.5, 1.5);
-    World.addNPC(Chars.chaewon(), 1.5, 4.1, Math.PI);
-    this.addFriendZone('chaewon', '채원이와 이야기하기', 1.5, 4.1);
-    World.addNPC(Chars.seoyeon(), -1.5, 1.5, Math.PI);        // 서연 — 첫 교실부터 등장
-    this.addFriendZone('seoyeon', '서연이와 이야기하기', -1.5, 1.5);
+    const sit = (char, key, label, dx, dz) => {
+      const [sx, sz] = World.deskStand(dx, dz);
+      World.addNPC(char, sx, sz, Math.PI);
+      this.addFriendZone(key, label, sx, sz);
+    };
+    sit(Chars.donghyuk(), 'donghyuk', '동혁이와 이야기하기', 1.5, 0.6);
+    sit(Chars.chaewon(), 'chaewon', '채원이와 이야기하기', 1.5, 3.2);
+    sit(Chars.seoyeon(), 'seoyeon', '서연이와 이야기하기', -1.5, 0.6);   // 서연 — 첫 교실부터 등장
     if (withNoah) {
       this.noah = Chars.noah(State.get('noahDesign'));
       World.addNPC(this.noah, 6.0,0.6, Math.PI);
@@ -437,10 +459,7 @@ if (noah.group.children.length > 0) {
     this.addFriendZone('chaewon', '채원이와 이야기하기', -4, 4);
     World.addNPC(Chars.seoyeon(), 8, -3, -0.5);
     this.addFriendZone('seoyeon', '서연이와 이야기하기', 8, -3);
-    for (let i = 0; i < 4; i++) {
-      World.addNPC(Chars.student(i), -8 + i * 5, 9, Math.PI * 0.05 * i);
-      this.addFriendZone('student', '친구와 이야기하기', -8 + i * 5, 9);
-    }
+    this.addBackRow();
     this.noah = Chars.noah(State.get('noahDesign'));
     World.addNPC(this.noah, 0, 1, 0);   // 운동장 한가운데 노아
     Player.enabled = false;
@@ -484,9 +503,15 @@ if (noah.group.children.length > 0) {
     this.step = 'hall1';
     UI.clearQuest();
     await World.go('hallway', { x: -14, z: 0, ry: Math.PI / 2 });
-    World.addNPC(Chars.donghyuk(), -5, -1.2, 2.2);
-    World.addNPC(Chars.student(0), -6.5, 0, 1.4);
-    World.addNPC(Chars.student(3), -5.5, 1.4, -2.6);
+    // 뒷담화 무리는 남녀 섞이게 — 0·3번은 둘 다 동혁과 같은 남학생 모델이라 셋이 똑같아 보였다
+    const gossip = [[-6.5, 0], [-5.5, 1.4]];
+    const dh = [-5, -1.2];
+    // 동혁은 두 친구 쪽을 바라보게 — 좌표에서 각도를 구해 셋이 둘러서서 수군대는 그림으로
+    World.addNPC(Chars.donghyuk(), dh[0], dh[1], Math.atan2(
+      (gossip[0][0] + gossip[1][0]) / 2 - dh[0],
+      (gossip[0][1] + gossip[1][1]) / 2 - dh[1]));
+    World.addNPC(Chars.student(1), gossip[0][0], gossip[0][1], 1.4);
+    World.addNPC(Chars.student(2), gossip[1][0], gossip[1][1], -2.6);
     this.noah = Chars.noah(State.get('noahDesign'));
     World.addNPC(this.noah, 6.2, -1.6, -Math.PI / 2);   // 기둥 뒤에 숨은 노아
     World.addZone(-5, 0, 2.2, '...몰래 다가가기', () => Flow.onZone('hall_scene'));
@@ -622,10 +647,7 @@ if (noah.group.children.length > 0) {
     this.addFriendZone('donghyuk', '동혁이와 이야기하기', 4, 4);
     World.addNPC(Chars.chaewon(), -4, 4, 0.8);
     this.addFriendZone('chaewon', '채원이와 이야기하기', -4, 4);
-    for (let i = 0; i < 4; i++) {
-      World.addNPC(Chars.student(i), -8 + i * 5, 9, Math.PI * 0.05 * i);
-      this.addFriendZone('student', '친구와 이야기하기', -8 + i * 5, 9);
-    }
+    this.addBackRow();
     this.noah = Chars.noah(State.get('noahDesign'));
     World.addNPC(this.noah, 0, 1, 0);   // 운동장 한가운데 노아
     Player.enabled = false;

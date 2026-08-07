@@ -343,6 +343,7 @@ const DevMode = {
     const models = [
       ['playerM', '👦 남자 주인공'], ['playerF', '👧 여자 주인공'], ['teacher', '🧑‍🏫 선생님'],
       ['noahHuman', '🤖 노아 인간'], ['noahAnimal', '🐱 노아 동물'], ['noahCar', '🚗 노아 자동차'],
+      ['friendBoy', '🧒 동혁'], ['friendGirlCw', '👧 채원'], ['friendGirlSy', '🙋‍♀️ 서연'],
     ];
     const ov = UI.overlay(`
       <div class="ov-panel glbv-panel">
