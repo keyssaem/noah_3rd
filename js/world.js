@@ -334,18 +334,15 @@ const World = {
     this.box(1.1, 0.1, 1.1, 0xffd54f, 0, 0.05, 6.9);
     this.pads.push({ x: 0, z: 6.9, hw: 0.55, y: 0.1 });
 
-    // 철봉 & 미끄럼틀
+    // 철봉
     this.box(0.12, 2, 0.12, 0x9e9e9e, -18, 1, 10);
     this.box(0.12, 2, 0.12, 0x9e9e9e, -15, 1, 10);
     this.box(3.2, 0.12, 0.12, 0xf44336, -16.5, 2, 10);
-    const slide = this.box(1.2, 0.15, 4, 0x42a5f5, 18, 1.1, 10);
-    slide.rotation.x = 0.5;
-    this.box(1.4, 2.2, 1.4, 0xff9800, 18, 1.1, 12.2);
-    this.obstacles.push({ x: 18, z: 11, r: 2 });
 
     // 나무 울타리
     for (let i = -26; i <= 26; i += 4) this.box(3.4, 0.8, 0.15, 0xbcaaa4, i, 0.4, 19.5);
     this.tree(-24, -14, 1.1); this.tree(24, -14, 1.1); this.tree(-24, 16, 0.9);
+    this.tree(18, 11, 1.1);   // 옛 미끄럼틀 자리 (tree()가 충돌원을 스스로 등록한다)
   },
 
   /* ═══════ 복도 ═══════ */
